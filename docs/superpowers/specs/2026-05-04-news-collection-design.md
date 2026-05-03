@@ -15,10 +15,11 @@ GitHub Actions에서 무료로 비철 6개 광물(copper, aluminum, zinc, nickel
 ### Success Criteria
 
 - 일 6회(매 4시간) 자동 실행, 평균 5분 이내 완료
-- 6 광물 각각 일평균 5건 이상 관련 뉴스 수집
+- **시그널 품질 우선:** 가격 영향 큰 이벤트(LME stock 변동, 공급망 disruption, 정책 발표) 누락 없음. 한가한 날 0건도 정상.
 - LLM 요약 정확도: 사용자 spot check 기준 confidence ≥ 0.6 항목 중 80% 이상 적절
 - 비용 0원 (Gemini/GDELT/RSS/GitHub Actions free tier 내)
 - 1개 소스 실패 시 다른 소스로 cover (격리된 실패)
+- **Anti-goal:** 헤드라인 수 KPI 추구 금지. 노이즈 채우는 것보다 비워두는 게 낫다.
 
 ### Out of Scope
 
