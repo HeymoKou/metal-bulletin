@@ -13,6 +13,9 @@ dist/
 # Temp PDFs + scratch
 tmp/
 
+# Build cache (regeneratable from data/raw/*.parquet via builder)
+data/daily/
+
 # OS
 .DS_Store
 Thumbs.db

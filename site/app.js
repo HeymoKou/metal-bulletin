@@ -1,10 +1,16 @@
 // LME Non-Ferrous Desk — vanilla JS (serverless GitHub Pages)
+// Data: Apache Parquet via hyparquet (ESM, ~25KB, no WASM)
+import { asyncBufferFromUrl, parquetReadObjects } from 'https://cdn.jsdelivr.net/npm/hyparquet@1/+esm';
+
 const DATA_BASE = '../data';
 
 const METAL_NAMES_KO = { copper: '전기동', aluminum: '알루미늄', zinc: '아연', nickel: '니켈', lead: '납', tin: '주석' };
 const METAL_NAMES_EN = { copper: 'Copper', aluminum: 'Aluminium', zinc: 'Zinc', nickel: 'Nickel', lead: 'Lead', tin: 'Tin' };
 const METAL_SYMBOLS  = { copper: 'Cu', aluminum: 'Al', zinc: 'Zn', nickel: 'Ni', lead: 'Pb', tin: 'Sn' };
 const METAL_ORDER    = ['copper', 'aluminum', 'zinc', 'nickel', 'lead', 'tin'];
+
+// hyparquet returns BigInt for int64 columns — coerce to Number for JS math.
+const num = (v) => v == null ? null : (typeof v === 'bigint' ? Number(v) : v);
 
 const fmt = (n, d) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 });
 const fmtInt = (n) => (n == null || isNaN(n)) ? '—' : Math.round(n).toLocaleString('en-US');
@@ -26,6 +32,49 @@ const dirClass = (n) => (n == null || n === 0) ? 'flat' : (n > 0 ? 'up' : 'down'
 const arrow = (n) => (n == null || n === 0) ? '·' : (n > 0 ? '▲' : '▼');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// --- Parquet flat-row → nested entry adapter (UI consumes nested) ---
+function unflatten(r) {
+  return {
+    date: r.date,
+    lme: {
+      cash: {
+        open: num(r.lme_cash_open), high: num(r.lme_cash_high), low: num(r.lme_cash_low),
+        close: num(r.lme_cash_close), change: num(r.lme_cash_change), prev_close: num(r.lme_cash_prev),
+      },
+      '3m': {
+        open: num(r.lme_3m_open), high: num(r.lme_3m_high), low: num(r.lme_3m_low),
+        close: num(r.lme_3m_close), change: num(r.lme_3m_change), prev_close: num(r.lme_3m_prev),
+      },
+      bid: num(r.lme_bid), ask: num(r.lme_ask), open_interest: num(r.lme_oi),
+    },
+    settlement: {
+      cash: num(r.sett_cash), '3m': num(r.sett_3m),
+      monthly_avg: { cash: num(r.sett_mavg_cash), '3m': num(r.sett_mavg_3m) },
+      prev_monthly_avg: { cash: num(r.sett_prev_mavg_cash), '3m': num(r.sett_prev_mavg_3m) },
+      forwards: { m1: num(r.sett_fwd_m1), m2: num(r.sett_fwd_m2), m3: num(r.sett_fwd_m3) },
+    },
+    inventory: {
+      prev: num(r.inv_prev), in: num(r.inv_in), out: num(r.inv_out), current: num(r.inv_current),
+      change: num(r.inv_change), on_warrant: num(r.inv_on_warrant),
+      cancelled_warrant: num(r.inv_cancelled_warrant), cw_change: num(r.inv_cw_change),
+    },
+    shfe: {
+      lme_3m_cny: num(r.shfe_lme_3m_cny), lme_near_cny: num(r.shfe_lme_near_cny),
+      lme_3m_incl_tax: num(r.shfe_lme_3m_incl_tax), lme_near_incl_tax: num(r.shfe_lme_near_incl_tax),
+      shfe_3m: num(r.shfe_3m), shfe_settle: num(r.shfe_settle), premium_usd: num(r.shfe_premium_usd),
+    },
+    krw: {
+      cash: num(r.krw_cash), '3m': num(r.krw_3m), rate: num(r.krw_rate), source: r.krw_source,
+    },
+  };
+}
+
+async function loadParquet(url) {
+  const file = await asyncBufferFromUrl({ url });
+  return await parquetReadObjects({ file });
+}
+
+// --- Series helpers (work on nested entries) ---
 function priceSeries(data, key = 'close', count = 30) {
   return data.slice(0, count).reverse().map(d => {
     const lme = d.lme || {};
@@ -311,16 +360,8 @@ function renderNav(metals) {
   }).join('');
 }
 
-function renderHeader(latestDate, krwRate, krwSrc, market) {
+function renderHeader(latestDate, krwRate, krwSrc) {
   const ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
-  const macros = market ? [
-    { lbl: 'KRW/USD', v: fmt(market.krw_usd), c: market.krw_change },
-    { lbl: 'WTI', v: fmt(market.wti), c: market.wti_change },
-    { lbl: 'S&P 500', v: fmt(market.sp500, 0), c: market.sp500_change },
-    { lbl: 'DOW', v: fmt(market.dow, 0), c: market.dow_change },
-    { lbl: 'EUR/USD', v: fmt(market.eur_usd, 4), c: null },
-    { lbl: 'JPY/USD', v: fmt(market.jpy_usd, 2), c: null },
-  ] : [];
   return `<header class="app__header">
     <div class="app__head-l">
       <div class="brand">
@@ -338,13 +379,6 @@ function renderHeader(latestDate, krwRate, krwSrc, market) {
       <span class="lbl">USD/KRW</span>
       <span class="mono rate__v">${fmt(krwRate)}</span>
       <span class="rate__src">${esc((krwSrc || '—').toUpperCase())}</span>
-    </div>
-    <div class="macro">
-      ${macros.map(it => `<div class="macro__item">
-        <span class="macro__lbl">${esc(it.lbl)}</span>
-        <span class="mono macro__v">${it.v}</span>
-        ${it.c != null ? `<span class="mono macro__c ${dirClass(it.c)}">${arrow(it.c)} ${fmtSigned(it.c, 2)}</span>` : ''}
-      </div>`).join('')}
     </div>
   </div>`;
 }
@@ -379,7 +413,7 @@ function openChart(label, series) {
       <div class="chart-overlay__head">
         <div>
           <div class="chart-overlay__title">${esc(label)}</div>
-          <div class="chart-overlay__sub">최근 30일 · 30-day · ${esc(dates[0])} → ${esc(dates[dates.length-1])}</div>
+          <div class="chart-overlay__sub">${esc(dates[0])} → ${esc(dates[dates.length-1])} · ${dates.length}일</div>
         </div>
         <button class="chart-overlay__close" aria-label="close">✕</button>
       </div>
@@ -451,103 +485,72 @@ function openChart(label, series) {
   document.body.appendChild(overlay);
 }
 
-// --- Pull-to-refresh ---
-function bindPTR(scroller, onRefresh) {
-  let startY = null, pull = 0;
-  let ptrEl = null;
-  function setPull(p) {
-    pull = p;
-    if (p > 0) {
-      if (!ptrEl) {
-        ptrEl = document.createElement('div');
-        ptrEl.className = 'ptr';
-        ptrEl.innerHTML = `<span class="mono">↓ 당겨서 갱신 · pull</span>`;
-        scroller.parentNode.insertBefore(ptrEl, scroller);
-      }
-      ptrEl.style.height = p + 'px';
-      ptrEl.querySelector('span').textContent = p > 50 ? '↑ 놓아서 갱신 · release' : '↓ 당겨서 갱신 · pull';
-    } else if (ptrEl) {
-      ptrEl.style.height = '0';
-      setTimeout(() => { ptrEl?.remove(); ptrEl = null; }, 200);
-    }
-  }
-  scroller.addEventListener('touchstart', e => {
-    if (scroller.scrollTop <= 0) startY = e.touches[0].clientY;
-    else startY = null;
-  }, { passive: true });
-  scroller.addEventListener('touchmove', e => {
-    if (startY == null) return;
-    const dy = e.touches[0].clientY - startY;
-    if (dy > 0 && scroller.scrollTop <= 0) {
-      setPull(Math.min(80, dy * 0.5));
-      e.preventDefault();
-    }
-  }, { passive: false });
-  scroller.addEventListener('touchend', () => {
-    if (pull > 50) {
-      ptrEl.querySelector('span').textContent = '⟳ 갱신중 · refreshing';
-      ptrEl.querySelector('span').classList.add('ptr--spin');
-      onRefresh();
-      setTimeout(() => setPull(0), 900);
-    } else {
-      setPull(0);
-    }
-    startY = null;
-  });
+// --- Loaders ---
+const yearCache = {}; // {metal}__{year} → entries[] (nested)
+
+async function loadLatest(metal) {
+  const url = `${DATA_BASE}/series/${metal}/latest.parquet`;
+  const rows = await loadParquet(url);
+  return rows.map(unflatten).sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
-// --- App init ---
-const yearCache = {}; // {metal}__{year} → ts payload
 async function loadYear(metal, year) {
   const key = `${metal}__${year}`;
   if (yearCache[key]) return yearCache[key];
-  const r = await fetch(`${DATA_BASE}/metals/${metal}/${year}.json`).catch(() => null);
-  if (!r || !r.ok) return null;
-  const data = await r.json();
-  yearCache[key] = data;
+  const url = `${DATA_BASE}/series/${metal}/${year}.parquet`;
+  try {
+    const rows = await loadParquet(url);
+    const entries = rows.map(unflatten).sort((a, b) => (a.date < b.date ? 1 : -1));
+    yearCache[key] = entries;
+    return entries;
+  } catch {
+    return [];
+  }
+}
+
+async function loadFullSeries(metal, manifest) {
+  const years = (manifest?.metals?.[metal]?.years || []).slice().sort((a, b) => b - a);
+  if (!years.length) return [];
+  const chunks = await Promise.all(years.map(y => loadYear(metal, y)));
+  const data = chunks.flat();
+  data.sort((a, b) => (a.date < b.date ? 1 : -1));
   return data;
 }
 
 async function loadAll() {
-  const [index, ...metalsArr] = await Promise.all([
-    fetch(`${DATA_BASE}/index.json`).then(r => r.json()).catch(() => null),
-    ...METAL_ORDER.map(m => fetch(`${DATA_BASE}/metals/${m}/latest.json`).then(r => r.json()).catch(() => null)),
-  ]);
+  const manifest = await fetch(`${DATA_BASE}/manifest.json`).then(r => r.json()).catch(() => null);
+  const latestArr = await Promise.all(METAL_ORDER.map(m =>
+    loadLatest(m).catch(err => { console.warn(`load ${m}:`, err); return []; })
+  ));
   const metals = {};
-  METAL_ORDER.forEach((m, i) => metals[m] = metalsArr[i]);
-  return { index, metals };
+  METAL_ORDER.forEach((m, i) => {
+    metals[m] = {
+      metal: m,
+      symbol: manifest?.metals?.[m]?.symbol,
+      unit: manifest?.metals?.[m]?.unit,
+      data: latestArr[i],
+    };
+  });
+  return { manifest, metals };
 }
 
-async function loadFullSeries(metal, index) {
-  // Concatenate all available years (newest-first) for this metal.
-  const years = (index?.years_per_metal?.[metal] || []).slice().sort((a, b) => b - a);
-  if (!years.length) return null;
-  const chunks = await Promise.all(years.map(y => loadYear(metal, y)));
-  const data = chunks.filter(Boolean).flatMap(c => c.data || []);
-  data.sort((a, b) => (a.date < b.date ? 1 : -1));
-  return { metal, data, symbol: chunks[0]?.symbol, unit: chunks[0]?.unit };
-}
-
+// --- Init ---
 async function init() {
-  const { index, metals } = await loadAll();
+  const { manifest, metals } = await loadAll();
   const root = document.getElementById('root');
   const latest0 = metals.copper?.data?.[0];
-  const latestDate = metals.copper?.last_updated || latest0?.date;
+  const latestDate = manifest?.last_updated || latest0?.date;
   const krw = latest0?.krw || {};
-  const market = latest0?.market || {
-    krw_usd: krw.rate, krw_change: null,
-    wti: null, wti_change: null, sp500: null, sp500_change: null,
-    dow: null, dow_change: null, eur_usd: null, jpy_usd: null,
-  };
 
   root.outerHTML = `<div class="app" id="root" data-density="compact" data-lang="ko" data-accent="muted">
-    ${renderHeader(latestDate, krw.rate, krw.source, market)}
+    ${renderHeader(latestDate, krw.rate, krw.source)}
     <nav class="app__nav nav--pricepct">${renderNav(metals)}</nav>
     <div class="app__scroller">
       ${METAL_ORDER.map(m => renderMetalSection(m, metals[m])).join('')}
       <footer class="app__footer">
         <div class="mono">END · 데이터 끝</div>
         <div class="lbl">Source: NH선물 · LME · SHFE · BOK · PDF · 마감 기준</div>
+        <div class="lbl">Format: Apache Parquet · ${manifest?.total_days || '—'}일 · ${manifest?.years?.[0] || '—'}~${manifest?.years?.[manifest.years.length - 1] || '—'}</div>
       </footer>
     </div>
   </div>`;
@@ -556,10 +559,8 @@ async function init() {
   const scroller = app.querySelector('.app__scroller');
   const nav = app.querySelector('.app__nav');
 
-  // Long-press copy
   bindLongPress(app);
 
-  // Nav click → scroll
   nav.querySelectorAll('.nav-pill').forEach(btn => {
     btn.addEventListener('click', () => {
       const m = btn.dataset.metal;
@@ -568,7 +569,6 @@ async function init() {
     });
   });
 
-  // IntersectionObserver: active sync + entering animation
   const sections = scroller.querySelectorAll('.metal-section');
   const obs = new IntersectionObserver(entries => {
     entries.forEach(e => {
@@ -587,28 +587,26 @@ async function init() {
   app.querySelectorAll('[data-expand]').forEach(el => {
     el.addEventListener('click', async () => {
       const m = el.dataset.expand;
-      const latestTs = metals[m];
-      if (!latestTs) return;
-      // Show 30-day from latest first, then upgrade to full when loaded.
-      const quickSeries = priceSeries(latestTs.data, 'close');
+      const latestData = metals[m]?.data;
+      if (!latestData?.length) return;
+      const quickSeries = priceSeries(latestData, 'close');
       const title = `${METAL_NAMES_KO[m]} · ${METAL_SYMBOLS[m]} 3M`;
       openChart(title, quickSeries);
-      // Async upgrade to full timeseries (all years).
-      if (index?.years_per_metal?.[m]?.length > 1) {
-        const full = await loadFullSeries(m, index);
-        if (full && full.data.length > latestTs.data.length) {
-          const fullSeries = priceSeries(full.data, 'close', full.data.length);
-          // Reopen with full data.
+      // Async upgrade: full series across all years.
+      const years = manifest?.metals?.[m]?.years || [];
+      if (years.length > 1) {
+        const full = await loadFullSeries(m, manifest);
+        if (full.length > latestData.length) {
+          const fullSeries = priceSeries(full, 'close', full.length);
           document.querySelector('.chart-overlay')?.remove();
           openChart(title + ' · 전체', fullSeries);
         }
       }
     });
   });
-
-  // PTR disabled in horizontal-swipe mode (would conflict with x-scroll)
 }
 
 init().catch(err => {
+  console.error(err);
   document.getElementById('root').innerHTML = `<pre style="color:#c87a6a;padding:20px">${esc(err.message || err)}</pre>`;
 });

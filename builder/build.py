@@ -1,19 +1,37 @@
+"""Builder — daily JSONs → Parquet series + manifest.
+
+Output layout:
+  data/series/{metal}/{year}.parquet   per-metal yearly chunks
+  data/series/{metal}/latest.parquet   last 90 trading days
+  data/raw/{year}.parquet              all-metal wide rows (archival, optional)
+  data/exchange.parquet                USD/KRW timeseries
+  data/manifest.json                   metadata (single source of truth)
+"""
+
+from __future__ import annotations
+
 import argparse
 import json
 import shutil
 from pathlib import Path
 
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 METALS = {
-    "copper": {"symbol": "Cu", "unit": "$/ton"},
+    "copper":   {"symbol": "Cu", "unit": "$/ton"},
     "aluminum": {"symbol": "Al", "unit": "$/ton"},
-    "zinc": {"symbol": "Zn", "unit": "$/ton"},
-    "lead": {"symbol": "Pb", "unit": "$/ton"},
-    "nickel": {"symbol": "Ni", "unit": "$/ton"},
-    "tin": {"symbol": "Sn", "unit": "$/ton"},
+    "zinc":     {"symbol": "Zn", "unit": "$/ton"},
+    "lead":     {"symbol": "Pb", "unit": "$/ton"},
+    "nickel":   {"symbol": "Ni", "unit": "$/ton"},
+    "tin":      {"symbol": "Sn", "unit": "$/ton"},
 }
 
 LATEST_WINDOW = 90
+SCHEMA_VERSION = 1
 
+
+# ---------- Rate resolution ----------
 
 def resolve_rate(daily: dict, rates_map: dict[str, float]) -> tuple[float | None, str | None]:
     """Resolve USD/KRW. Priority: BOK ECOS → PDF market.krw_usd → None."""
@@ -26,160 +44,351 @@ def resolve_rate(daily: dict, rates_map: dict[str, float]) -> tuple[float | None
     return None, None
 
 
-def build_entry(daily: dict, metal: str, rates_map: dict[str, float]) -> dict | None:
-    m = daily["metals"].get(metal)
+# ---------- Flatten daily metal data → flat row ----------
+
+def _gv(d, *path):
+    cur = d
+    for p in path:
+        if not isinstance(cur, dict):
+            return None
+        cur = cur.get(p)
+    return cur
+
+
+def flatten_metal_row(daily: dict, metal: str, rate: float | None, rate_source: str | None) -> dict | None:
+    """One flat row for (date, metal). Returns None if metal missing in daily."""
+    m = (daily.get("metals") or {}).get(metal)
     if not m:
         return None
-    rate, rate_source = resolve_rate(daily, rates_map)
-    lme = m.get("lme", {})
-    cash_close = lme.get("cash", {}).get("close") if "cash" in lme else None
-    tm_close = lme.get("3m", {}).get("close") if "3m" in lme else None
 
-    krw = {}
-    if rate:
-        if cash_close is not None:
-            krw["cash"] = round(cash_close * rate)
-        if tm_close is not None:
-            krw["3m"] = round(tm_close * rate)
-        krw["rate"] = rate
-        krw["source"] = rate_source
+    lme  = m.get("lme") or {}
+    cash = lme.get("cash") or {}
+    tm   = lme.get("3m") or {}
+    sett = m.get("settlement") or {}
+    inv  = m.get("inventory") or {}
+    shfe = m.get("shfe") or {}
+
+    cash_close = cash.get("close")
+    tm_close   = tm.get("close")
+
+    krw_cash = round(cash_close * rate) if (cash_close is not None and rate) else None
+    krw_3m   = round(tm_close   * rate) if (tm_close   is not None and rate) else None
 
     return {
         "date": daily["date"],
-        "lme": lme,
-        "settlement": m.get("settlement", {}),
-        "inventory": m.get("inventory", {}),
-        "shfe": m.get("shfe", {}),
-        "krw": krw,
+
+        # LME cash
+        "lme_cash_open":   cash.get("open"),
+        "lme_cash_high":   cash.get("high"),
+        "lme_cash_low":    cash.get("low"),
+        "lme_cash_close":  cash.get("close"),
+        "lme_cash_change": cash.get("change"),
+        "lme_cash_prev":   cash.get("prev_close"),
+
+        # LME 3M
+        "lme_3m_open":     tm.get("open"),
+        "lme_3m_high":     tm.get("high"),
+        "lme_3m_low":      tm.get("low"),
+        "lme_3m_close":    tm.get("close"),
+        "lme_3m_change":   tm.get("change"),
+        "lme_3m_prev":     tm.get("prev_close"),
+
+        # bid/ask/OI
+        "lme_bid":         lme.get("bid"),
+        "lme_ask":         lme.get("ask"),
+        "lme_oi":          lme.get("open_interest"),
+
+        # Settlement
+        "sett_cash":              sett.get("cash"),
+        "sett_3m":                sett.get("3m"),
+        "sett_mavg_cash":         _gv(sett, "monthly_avg", "cash"),
+        "sett_mavg_3m":           _gv(sett, "monthly_avg", "3m"),
+        "sett_prev_mavg_cash":    _gv(sett, "prev_monthly_avg", "cash"),
+        "sett_prev_mavg_3m":      _gv(sett, "prev_monthly_avg", "3m"),
+        "sett_fwd_m1":            _gv(sett, "forwards", "m1"),
+        "sett_fwd_m2":            _gv(sett, "forwards", "m2"),
+        "sett_fwd_m3":            _gv(sett, "forwards", "m3"),
+
+        # Inventory
+        "inv_prev":              inv.get("prev"),
+        "inv_in":                inv.get("in"),
+        "inv_out":               inv.get("out"),
+        "inv_current":           inv.get("current"),
+        "inv_change":            inv.get("change"),
+        "inv_on_warrant":        inv.get("on_warrant"),
+        "inv_cancelled_warrant": inv.get("cancelled_warrant"),
+        "inv_cw_change":         inv.get("cw_change"),
+
+        # SHFE
+        "shfe_lme_3m_cny":          shfe.get("lme_3m_cny"),
+        "shfe_lme_near_cny":        shfe.get("lme_near_cny"),
+        "shfe_lme_3m_incl_tax":     shfe.get("lme_3m_incl_tax"),
+        "shfe_lme_near_incl_tax":   shfe.get("lme_near_incl_tax"),
+        "shfe_3m":                  shfe.get("shfe_3m"),
+        "shfe_settle":              shfe.get("shfe_settle"),
+        "shfe_premium_usd":         shfe.get("premium_usd"),
+
+        # KRW
+        "krw_cash":   krw_cash,
+        "krw_3m":     krw_3m,
+        "krw_rate":   rate,
+        "krw_source": rate_source,
     }
 
 
-def build_metal_timeseries(metal: str, dailies: list[dict], rates_map: dict[str, float]) -> dict:
-    """Backwards-compatible: returns full timeseries (used by tests)."""
-    info = METALS[metal]
-    data = []
-    for daily in dailies:
-        entry = build_entry(daily, metal, rates_map)
-        if entry:
-            data.append(entry)
-    data.sort(key=lambda d: d["date"], reverse=True)
-    return {
-        "metal": metal,
-        "symbol": info["symbol"],
-        "unit": info["unit"],
-        "last_updated": data[0]["date"] if data else None,
-        "data": data,
-    }
+# ---------- Schema + table builders ----------
+
+# Field types for a metal row (date string, others float/int/string)
+_FLOAT = pa.float64()
+_INT   = pa.int64()
+_STR   = pa.string()
+
+METAL_SCHEMA = pa.schema([
+    pa.field("date", _STR),
+    *(pa.field(c, _FLOAT) for c in [
+        "lme_cash_open", "lme_cash_high", "lme_cash_low", "lme_cash_close", "lme_cash_change", "lme_cash_prev",
+        "lme_3m_open", "lme_3m_high", "lme_3m_low", "lme_3m_close", "lme_3m_change", "lme_3m_prev",
+        "lme_bid", "lme_ask",
+        "sett_cash", "sett_3m",
+        "sett_mavg_cash", "sett_mavg_3m",
+        "sett_prev_mavg_cash", "sett_prev_mavg_3m",
+        "sett_fwd_m1", "sett_fwd_m2", "sett_fwd_m3",
+        "shfe_premium_usd",
+        "krw_rate",
+    ]),
+    *(pa.field(c, _INT) for c in [
+        "lme_oi",
+        "inv_prev", "inv_in", "inv_out", "inv_current", "inv_change",
+        "inv_on_warrant", "inv_cancelled_warrant", "inv_cw_change",
+        "shfe_lme_3m_cny", "shfe_lme_near_cny", "shfe_lme_3m_incl_tax", "shfe_lme_near_incl_tax",
+        "shfe_3m", "shfe_settle",
+        "krw_cash", "krw_3m",
+    ]),
+    pa.field("krw_source", _STR),
+])
 
 
-def split_by_year(entries: list[dict]) -> dict[int, list[dict]]:
+def rows_to_table(rows: list[dict], schema: pa.Schema) -> pa.Table:
+    """Convert list of dicts → pyarrow Table with explicit schema (handles None as null)."""
+    cols = {f.name: [] for f in schema}
+    for r in rows:
+        for f in schema:
+            cols[f.name].append(r.get(f.name))
+    arrays = []
+    for f in schema:
+        if pa.types.is_integer(f.type):
+            # Cast None preserved; floats coerced to int when not None.
+            arr = pa.array(
+                [int(v) if v is not None else None for v in cols[f.name]],
+                type=f.type,
+            )
+        else:
+            arr = pa.array(cols[f.name], type=f.type)
+        arrays.append(arr)
+    return pa.Table.from_arrays(arrays, schema=schema)
+
+
+def write_parquet(table: pa.Table, path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(
+        table,
+        path,
+        compression="zstd",
+        compression_level=9,
+        use_dictionary=True,
+        write_statistics=True,
+    )
+
+
+# ---------- Series writer ----------
+
+def split_by_year(rows: list[dict]) -> dict[int, list[dict]]:
     by_year: dict[int, list[dict]] = {}
-    for e in entries:
-        year = int(e["date"][:4])
-        by_year.setdefault(year, []).append(e)
+    for r in rows:
+        year = int(r["date"][:4])
+        by_year.setdefault(year, []).append(r)
     return by_year
 
 
-def build_index(dates: list[str], years_per_metal: dict[str, list[int]]) -> dict:
-    sorted_dates = sorted(dates)
+def write_metal_series(metal: str, rows: list[dict], series_root: Path) -> list[int]:
+    metal_dir = series_root / metal
+    metal_dir.mkdir(parents=True, exist_ok=True)
+
+    # Sort newest → oldest
+    rows_sorted = sorted(rows, key=lambda r: r["date"], reverse=True)
+
+    # latest.parquet
+    latest_rows = rows_sorted[:LATEST_WINDOW]
+    write_parquet(rows_to_table(latest_rows, METAL_SCHEMA), metal_dir / "latest.parquet")
+
+    # Per-year
+    by_year = split_by_year(rows_sorted)
+    years = sorted(by_year.keys(), reverse=True)
+    for y in years:
+        yrows = sorted(by_year[y], key=lambda r: r["date"], reverse=True)
+        write_parquet(rows_to_table(yrows, METAL_SCHEMA), metal_dir / f"{y}.parquet")
+    return years
+
+
+# ---------- Exchange writer ----------
+
+def write_exchange(rates_map: dict[str, float], path: Path):
+    rows = sorted(rates_map.items(), key=lambda x: x[0])
+    table = pa.table({
+        "date": [d for d, _ in rows],
+        "rate": [float(r) for _, r in rows],
+    })
+    write_parquet(table, path)
+
+
+# ---------- Raw archive (bundle daily JSONs by year) ----------
+
+def write_raw_archives(dailies: list[dict], raw_root: Path) -> list[int]:
+    """Bundle daily entries into raw/{year}.parquet (JSON string column).
+
+    Schema: date (string) + json (string, full daily JSON).
+    Compressed with zstd — typically 6-10× smaller than raw JSON files.
+    """
+    by_year: dict[int, list[dict]] = {}
+    for d in dailies:
+        y = int(d["date"][:4])
+        by_year.setdefault(y, []).append(d)
+
+    raw_root.mkdir(parents=True, exist_ok=True)
+    years = sorted(by_year.keys())
+    for y in years:
+        rows = sorted(by_year[y], key=lambda d: d["date"])
+        table = pa.table({
+            "date": [r["date"] for r in rows],
+            "json": [json.dumps(r, ensure_ascii=False, separators=(",", ":")) for r in rows],
+        })
+        write_parquet(table, raw_root / f"{y}.parquet")
+    return years
+
+
+# ---------- Manifest ----------
+
+def build_manifest(dailies: list[dict], years_per_metal: dict[str, list[int]]) -> dict:
+    dates = sorted(d["date"] for d in dailies)
     all_years = sorted({y for ys in years_per_metal.values() for y in ys})
     return {
-        "last_updated": sorted_dates[-1] if sorted_dates else None,
-        "metals": list(METALS.keys()),
-        "metal_info": {m: {"symbol": v["symbol"], "unit": v["unit"]} for m, v in METALS.items()},
+        "schema": SCHEMA_VERSION,
+        "format": "parquet",
+        "compression": "zstd",
+        "last_updated": dates[-1] if dates else None,
+        "metals": {
+            m: {
+                "symbol": METALS[m]["symbol"],
+                "unit": METALS[m]["unit"],
+                "years": years_per_metal.get(m, []),
+            }
+            for m in METALS
+        },
         "years": all_years,
-        "years_per_metal": years_per_metal,
-        "total_days": len(sorted_dates),
+        "total_days": len(dates),
         "date_range": {
-            "from": sorted_dates[0] if sorted_dates else None,
-            "to": sorted_dates[-1] if sorted_dates else None,
+            "from": dates[0] if dates else None,
+            "to":   dates[-1] if dates else None,
         },
         "latest_window": LATEST_WINDOW,
     }
 
 
-def write_metal_files(metal: str, entries: list[dict], out_root: Path):
-    """Write {metal}/{year}.json and {metal}/latest.json."""
-    info = METALS[metal]
-    metal_dir = out_root / metal
-    metal_dir.mkdir(parents=True, exist_ok=True)
+# ---------- Cleanup legacy ----------
 
-    # Sort newest-first overall
-    entries_sorted = sorted(entries, key=lambda e: e["date"], reverse=True)
-
-    # latest.json — last LATEST_WINDOW entries
-    latest = {
-        "metal": metal,
-        "symbol": info["symbol"],
-        "unit": info["unit"],
-        "last_updated": entries_sorted[0]["date"] if entries_sorted else None,
-        "window_days": LATEST_WINDOW,
-        "data": entries_sorted[:LATEST_WINDOW],
-    }
-    (metal_dir / "latest.json").write_text(json.dumps(latest, ensure_ascii=False, indent=2))
-
-    # Per-year files (full data, newest-first within year)
-    by_year = split_by_year(entries_sorted)
-    years = sorted(by_year.keys(), reverse=True)
-    for year in years:
-        year_data = sorted(by_year[year], key=lambda e: e["date"], reverse=True)
-        year_obj = {
-            "metal": metal,
-            "symbol": info["symbol"],
-            "unit": info["unit"],
-            "year": year,
-            "data": year_data,
-        }
-        (metal_dir / f"{year}.json").write_text(json.dumps(year_obj, ensure_ascii=False, indent=2))
-
-    return years
+def cleanup_legacy(data_dir: Path):
+    """Remove pre-Parquet data layout."""
+    legacy_paths = [
+        data_dir / "metals",       # old per-metal JSON dirs
+        data_dir / "exchange",     # old usd_krw.json directory
+        data_dir / "index.json",   # renamed to manifest.json
+    ]
+    for p in legacy_paths:
+        if p.is_dir():
+            shutil.rmtree(p, ignore_errors=True)
+        elif p.exists():
+            p.unlink()
 
 
-def cleanup_legacy(metals_dir: Path):
-    """Remove pre-refactor flat files (data/metals/copper.json etc)."""
-    for metal in METALS:
-        legacy = metals_dir / f"{metal}.json"
-        if legacy.exists() and legacy.is_file():
-            legacy.unlink()
+# ---------- Entry point ----------
+
+def load_dailies(data_dir: Path) -> list[dict]:
+    """Load daily entries. Prefers data/daily/*.json; falls back to data/raw/*.parquet archives."""
+    daily_dir = data_dir / "daily"
+    raw_dir = data_dir / "raw"
+    dailies: list[dict] = []
+
+    if daily_dir.exists():
+        for f in sorted(daily_dir.glob("*.json")):
+            try:
+                dailies.append(json.loads(f.read_text()))
+            except Exception as e:
+                print(f"skip {f.name}: {e}")
+
+    if not dailies and raw_dir.exists():
+        # Restore from raw archives
+        for f in sorted(raw_dir.glob("*.parquet")):
+            table = pq.read_table(f)
+            for row in table.to_pylist():
+                try:
+                    dailies.append(json.loads(row["json"]))
+                except Exception:
+                    pass
+        if dailies:
+            print(f"restored {len(dailies)} daily entries from raw/")
+
+    return dailies
 
 
 def run(data_dir: Path):
-    daily_dir = data_dir / "daily"
-    metals_dir = data_dir / "metals"
-    metals_dir.mkdir(parents=True, exist_ok=True)
+    series_dir = data_dir / "series"
 
-    dailies = []
-    for f in sorted(daily_dir.glob("*.json")):
-        dailies.append(json.loads(f.read_text()))
+    dailies = load_dailies(data_dir)
 
     if not dailies:
         print("No daily data found")
         return
 
-    exchange_path = data_dir / "exchange" / "usd_krw.json"
-    rates_map = {}
-    if exchange_path.exists():
-        exchange_data = json.loads(exchange_path.read_text())
-        for r in exchange_data.get("rates", []):
-            rates_map[r["date"]] = r["rate"]
+    # Load BOK rates (optional)
+    rates_map: dict[str, float] = {}
+    bok_path = data_dir / "exchange.bok.json"  # new compat path (optional)
+    legacy_bok_path = data_dir / "exchange" / "usd_krw.json"
+    if bok_path.exists():
+        rates_map.update({r["date"]: r["rate"] for r in json.loads(bok_path.read_text()).get("rates", [])})
+    elif legacy_bok_path.exists():
+        rates_map.update({r["date"]: r["rate"] for r in json.loads(legacy_bok_path.read_text()).get("rates", [])})
 
-    cleanup_legacy(metals_dir)
+    cleanup_legacy(data_dir)
+    series_dir.mkdir(parents=True, exist_ok=True)
 
+    # Build per-metal series + collect resolved rates for exchange parquet
     years_per_metal: dict[str, list[int]] = {}
+    resolved_rates: dict[str, float] = dict(rates_map)  # start with BOK
     for metal in METALS:
-        entries = []
+        rows = []
         for daily in dailies:
-            e = build_entry(daily, metal, rates_map)
-            if e:
-                entries.append(e)
-        years = write_metal_files(metal, entries, metals_dir)
+            rate, source = resolve_rate(daily, rates_map)
+            if rate and daily["date"] not in resolved_rates:
+                resolved_rates[daily["date"]] = rate
+            r = flatten_metal_row(daily, metal, rate, source)
+            if r:
+                rows.append(r)
+        years = write_metal_series(metal, rows, series_dir)
         years_per_metal[metal] = years
-        print(f"Built: {metal} ({len(entries)} days, years {years[-1] if years else '-'}~{years[0] if years else '-'})")
+        print(f"series: {metal} ({len(rows)} rows, years {years[-1] if years else '-'}~{years[0] if years else '-'})")
 
-    dates = [d["date"] for d in dailies]
-    index = build_index(dates, years_per_metal)
-    (data_dir / "index.json").write_text(json.dumps(index, ensure_ascii=False, indent=2))
-    print(f"Index: {index['total_days']} days, years {index['years']}")
+    # Exchange parquet
+    write_exchange(resolved_rates, data_dir / "exchange.parquet")
+    print(f"exchange: {len(resolved_rates)} rates")
+
+    # Raw archive
+    raw_years = write_raw_archives(dailies, data_dir / "raw")
+    print(f"raw: {len(dailies)} entries archived in {len(raw_years)} year files")
+
+    # Manifest
+    manifest = build_manifest(dailies, years_per_metal)
+    (data_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
+    print(f"manifest: {manifest['total_days']} days, years {manifest['years']}")
 
 
 if __name__ == "__main__":
