@@ -76,3 +76,83 @@ def test_gemini_provider_propagates_failure(monkeypatch):
     provider = GeminiProvider(api_key="fake")
     with pytest.raises(RuntimeError):
         provider.summarize_batch([_raw()])
+
+
+def test_failover_first_success_short_circuits():
+    from summarizer.client import SummarizerClient
+
+    p1 = MagicMock()
+    p1.name = "p1"
+    p1.summarize_batch.return_value = [
+        EnrichedNewsItem(
+            source="s", url="https://e.com/1", title="t",
+            fetched_at=datetime.now(timezone.utc), lang="en",
+            summary_ko="ok", metals=[], sentiment=0, event_type="other", confidence=0.8,
+        )
+    ]
+    p2 = MagicMock()
+
+    client = SummarizerClient(providers=[p1, p2])
+    out = client.summarize([_raw()])
+    assert len(out) == 1
+    p1.summarize_batch.assert_called_once()
+    p2.summarize_batch.assert_not_called()
+
+
+def test_failover_falls_through_on_failure():
+    from summarizer.client import SummarizerClient
+
+    p1 = MagicMock()
+    p1.name = "p1"
+    p1.summarize_batch.side_effect = RuntimeError("rate limit")
+    p2 = MagicMock()
+    p2.name = "p2"
+    p2.summarize_batch.return_value = [
+        EnrichedNewsItem(
+            source="s", url="https://e.com/1", title="t",
+            fetched_at=datetime.now(timezone.utc), lang="en",
+            summary_ko="from p2", metals=[], sentiment=0, event_type="other", confidence=0.7,
+        )
+    ]
+
+    client = SummarizerClient(providers=[p1, p2])
+    out = client.summarize([_raw()])
+    assert out[0].summary_ko == "from p2"
+    p1.summarize_batch.assert_called_once()
+    p2.summarize_batch.assert_called_once()
+
+
+def test_failover_all_fail_returns_raw():
+    from summarizer.client import SummarizerClient
+
+    p1 = MagicMock()
+    p1.name = "p1"
+    p1.summarize_batch.side_effect = RuntimeError("fail1")
+    p2 = MagicMock()
+    p2.name = "p2"
+    p2.summarize_batch.side_effect = RuntimeError("fail2")
+
+    client = SummarizerClient(providers=[p1, p2])
+    out = client.summarize([_raw()])
+    assert len(out) == 1
+    assert out[0].summary_ko is None
+
+
+def test_batches_split_on_size():
+    from summarizer.client import SummarizerClient
+
+    p1 = MagicMock()
+    p1.name = "p1"
+    p1.summarize_batch.side_effect = lambda items: [
+        EnrichedNewsItem(
+            **i.model_dump(exclude={"url_hash"}),
+            summary_ko="ok", metals=[], sentiment=0, event_type="other", confidence=0.8,
+        )
+        for i in items
+    ]
+
+    client = SummarizerClient(providers=[p1], batch_size=3)
+    items = [_raw(url=f"https://e.com/{i}") for i in range(7)]
+    out = client.summarize(items)
+    assert len(out) == 7
+    assert p1.summarize_batch.call_count == 3
