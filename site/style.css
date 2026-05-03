@@ -233,6 +233,7 @@ body {
 .hero__expand:hover { background: var(--bg-3); color: var(--text); }
 .hero__price-row { display: flex; align-items: baseline; gap: 12px; }
 .hero__price { font-size: 32px; font-weight: 500; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+.hero__ccy { font-size: 20px; color: var(--text-mute); margin-right: 2px; vertical-align: 0.05em; font-weight: 400; }
 .hero__change { display: flex; align-items: baseline; gap: 8px; font-size: 13px; }
 .hero__change.up, .hero__change.down { font-weight: 500; }
 .hero__pct {

@@ -170,19 +170,19 @@ function renderHero(metal, latest, series) {
       </button>
     </div>
     <div class="hero__price-row">
-      <span class="hero__price mono" data-copy="${mainPrice ?? ''}">${fmt(mainPrice)}</span>
+      <span class="hero__price mono" data-copy="${mainPrice ?? ''}"><span class="hero__ccy">$</span>${fmt(mainPrice)}</span>
     </div>
     <div class="hero__change mono ${dir}">
       <span>${arrow(mainChange)}</span>
-      <span>${fmtSigned(mainChange)}</span>
+      <span>${mainChange != null ? (mainChange >= 0 ? '+$' : '−$') + fmt(Math.abs(mainChange)) : '—'}</span>
       ${pctVal != null ? `<span class="hero__pct">${fmtSigned(pctVal, 2)}%</span>` : ''}
     </div>
     <div class="hero__spark" data-expand="${metal}">${sparkline(series, { height: 56, width: 320, strokeWidth: 1.5 })}</div>
     <div class="hero__ohlc mono">
-      <div><span class="lbl">시가 O</span><span data-copy="${tm.open ?? cash.open ?? ''}">${fmt(tm.open ?? cash.open)}</span></div>
-      <div><span class="lbl">고가 H</span><span data-copy="${tm.high ?? cash.high ?? ''}">${fmt(tm.high ?? cash.high)}</span></div>
-      <div><span class="lbl">저가 L</span><span data-copy="${tm.low ?? cash.low ?? ''}">${fmt(tm.low ?? cash.low)}</span></div>
-      <div><span class="lbl">종가 C</span><span data-copy="${tm.close ?? cash.close ?? ''}">${fmt(tm.close ?? cash.close)}</span></div>
+      <div><span class="lbl">시가 O</span><span data-copy="${tm.open ?? cash.open ?? ''}">$${fmt(tm.open ?? cash.open)}</span></div>
+      <div><span class="lbl">고가 H</span><span data-copy="${tm.high ?? cash.high ?? ''}">$${fmt(tm.high ?? cash.high)}</span></div>
+      <div><span class="lbl">저가 L</span><span data-copy="${tm.low ?? cash.low ?? ''}">$${fmt(tm.low ?? cash.low)}</span></div>
+      <div><span class="lbl">종가 C</span><span data-copy="${tm.close ?? cash.close ?? ''}">$${fmt(tm.close ?? cash.close)}</span></div>
     </div>
   </div>`;
 }
@@ -226,12 +226,12 @@ function renderMetalSection(metal, ts) {
       <span class="block__h-en">LME quote · USD/t</span>
     </div>
     <div class="kv-grid kv-grid--2">
-      ${row('현금 Cash', '', cash.close, { dim: !hasCash })}
-      ${row('3개월 3M', '', tm.close)}
-      ${row('시가 Open', '', tm.open ?? cash.open, { dim: !hasCash && tm.open == null })}
-      ${row('고가 High', '', tm.high ?? cash.high)}
-      ${row('저가 Low', '', tm.low ?? cash.low)}
-      ${row('전일종가', 'prev close', tm.prev_close ?? cash.prev_close)}
+      ${row('현금 Cash', '', cash.close, { dim: !hasCash, prefix: '$' })}
+      ${row('3개월 3M', '', tm.close, { prefix: '$' })}
+      ${row('시가 Open', '', tm.open ?? cash.open, { dim: !hasCash && tm.open == null, prefix: '$' })}
+      ${row('고가 High', '', tm.high ?? cash.high, { prefix: '$' })}
+      ${row('저가 Low', '', tm.low ?? cash.low, { prefix: '$' })}
+      ${row('전일종가', 'prev close', tm.prev_close ?? cash.prev_close, { prefix: '$' })}
       ${row('매수호가', 'bid', lme.bid)}
       ${row('매도호가', 'ask', lme.ask)}
     </div>
@@ -247,12 +247,12 @@ function renderMetalSection(metal, ts) {
       <span class="block__h-en">Settlement · USD/t</span>
     </div>
     <div class="kv-grid kv-grid--2">
-      ${row('Cash 정산', 'cash settle', sett.cash)}
-      ${row('3M 정산', '3M settle', sett['3m'])}
-      ${row('당월평균 Cash', 'MTD avg cash', sett.monthly_avg?.cash, { dir: dirClass(monthlyDeltaCash) })}
-      ${row('당월평균 3M', 'MTD avg 3M', sett.monthly_avg?.['3m'], { dir: dirClass(monthlyDelta3m) })}
-      ${row('전월평균 Cash', 'prev mo. cash', sett.prev_monthly_avg?.cash, { dim: true })}
-      ${row('전월평균 3M', 'prev mo. 3M', sett.prev_monthly_avg?.['3m'], { dim: true })}
+      ${row('Cash 정산', 'cash settle', sett.cash, { prefix: '$' })}
+      ${row('3M 정산', '3M settle', sett['3m'], { prefix: '$' })}
+      ${row('당월평균 Cash', 'MTD avg cash', sett.monthly_avg?.cash, { dir: dirClass(monthlyDeltaCash), prefix: '$' })}
+      ${row('당월평균 3M', 'MTD avg 3M', sett.monthly_avg?.['3m'], { dir: dirClass(monthlyDelta3m), prefix: '$' })}
+      ${row('전월평균 Cash', 'prev mo. cash', sett.prev_monthly_avg?.cash, { dim: true, prefix: '$' })}
+      ${row('전월평균 3M', 'prev mo. 3M', sett.prev_monthly_avg?.['3m'], { dim: true, prefix: '$' })}
     </div>
     <div class="forwards">
       <div class="forwards__lbl">
@@ -260,9 +260,9 @@ function renderMetalSection(metal, ts) {
         <span class="block__h-en">forward curve</span>
       </div>
       <div class="forwards__row mono">
-        <div><div class="lbl">M+1</div><div>${fmt(sett.forwards?.m1)}</div></div>
-        <div><div class="lbl">M+2</div><div>${fmt(sett.forwards?.m2)}</div></div>
-        <div><div class="lbl">M+3</div><div>${fmt(sett.forwards?.m3)}</div></div>
+        <div><div class="lbl">M+1</div><div>$${fmt(sett.forwards?.m1)}</div></div>
+        <div><div class="lbl">M+2</div><div>$${fmt(sett.forwards?.m2)}</div></div>
+        <div><div class="lbl">M+3</div><div>$${fmt(sett.forwards?.m3)}</div></div>
       </div>
     </div>
   </div>`;
@@ -297,15 +297,15 @@ function renderMetalSection(metal, ts) {
       <span class="block__h-en">SHFE arbitrage</span>
     </div>
     <div class="kv-grid kv-grid--2">
-      ${row('SHFE 정산가', 'SHFE settle · CNY', shfe.shfe_settle, { displayValue: fmtInt(shfe.shfe_settle) })}
-      ${row('SHFE 3M', 'SHFE 3M · CNY', shfe.shfe_3m, { displayValue: fmtInt(shfe.shfe_3m) })}
-      ${row('LME 3M (CNY)', 'excl. tax', shfe.lme_3m_cny, { displayValue: fmtInt(shfe.lme_3m_cny) })}
-      ${row('LME 3M (CNY)', 'incl. tax', shfe.lme_3m_incl_tax, { displayValue: fmtInt(shfe.lme_3m_incl_tax) })}
-      ${row('LME 현금 (CNY)', 'excl. tax', shfe.lme_near_cny, { displayValue: fmtInt(shfe.lme_near_cny), dim: !hasCash })}
-      ${row('LME 현금 (CNY)', 'incl. tax', shfe.lme_near_incl_tax, { displayValue: fmtInt(shfe.lme_near_incl_tax), dim: !hasCash })}
+      ${row('SHFE 정산가', 'SHFE settle · CNY', shfe.shfe_settle, { displayValue: '¥' + fmtInt(shfe.shfe_settle) })}
+      ${row('SHFE 3M', 'SHFE 3M · CNY', shfe.shfe_3m, { displayValue: '¥' + fmtInt(shfe.shfe_3m) })}
+      ${row('LME 3M (CNY)', 'excl. tax', shfe.lme_3m_cny, { displayValue: '¥' + fmtInt(shfe.lme_3m_cny) })}
+      ${row('LME 3M (CNY)', 'incl. tax', shfe.lme_3m_incl_tax, { displayValue: '¥' + fmtInt(shfe.lme_3m_incl_tax) })}
+      ${row('LME 현금 (CNY)', 'excl. tax', shfe.lme_near_cny, { displayValue: '¥' + fmtInt(shfe.lme_near_cny), dim: !hasCash })}
+      ${row('LME 현금 (CNY)', 'incl. tax', shfe.lme_near_incl_tax, { displayValue: '¥' + fmtInt(shfe.lme_near_incl_tax), dim: !hasCash })}
     </div>
     <div class="kv-grid kv-grid--1 kv-grid--accent">
-      ${row('프리미엄', 'premium · USD/t', shfe.premium_usd, { displayValue: fmtSigned(shfe.premium_usd, 2), dir: dirClass(shfe.premium_usd) })}
+      ${row('프리미엄', 'premium · USD/t', shfe.premium_usd, { displayValue: (shfe.premium_usd != null ? (shfe.premium_usd >= 0 ? '+$' : '−$') + fmt(Math.abs(shfe.premium_usd), 2) : '—'), dir: dirClass(shfe.premium_usd) })}
     </div>
   </div>`;
 
@@ -319,7 +319,7 @@ function renderMetalSection(metal, ts) {
       ${row('3M', '₩', krw['3m'], { displayValue: fmtInt(krw['3m']), prefix: '₩' })}
     </div>
     <div class="kv-grid kv-grid--2">
-      ${row('적용환율', 'applied FX', krw.rate)}
+      ${row('적용환율', 'applied FX', krw.rate, { prefix: '₩' })}
       ${row('환율 출처', 'source', krw.source, { displayValue: (krw.source || '—').toUpperCase(), copyable: false })}
     </div>
   </div>`;
@@ -356,7 +356,7 @@ function renderNav(metals) {
     return `<button class="nav-pill nav-pill--${dir}" data-metal="${m}">
       <span class="nav-pill__sym mono">${METAL_SYMBOLS[m]}</span>
       <div class="nav-pill__col">
-        <span class="nav-pill__price mono">${fmt(close, close > 1000 ? 0 : 2)}</span>
+        <span class="nav-pill__price mono">$${fmt(close, close > 1000 ? 0 : 2)}</span>
         <span class="nav-pill__pct mono ${dir}">${arrow(change)} ${pct == null ? '—' : fmtSigned(pct, 2) + '%'}</span>
       </div>
     </button>`;
@@ -380,7 +380,7 @@ function renderHeader(latestDate, krwRate, krwSrc) {
   <div class="app__rate">
     <div class="rate__main">
       <span class="lbl">USD/KRW</span>
-      <span class="mono rate__v">${fmt(krwRate)}</span>
+      <span class="mono rate__v">₩${fmt(krwRate)}</span>
       <span class="rate__src">${esc((krwSrc || '—').toUpperCase())}</span>
     </div>
   </div>`;
