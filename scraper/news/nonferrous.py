@@ -46,7 +46,14 @@ class NonferrousScraper(NewsSource):
         try:
             r = requests.get(url, headers=headers, timeout=TIMEOUT)
             r.raise_for_status()
-            return self._parse(r.text)
+            items = self._parse(r.text)
+            if not items:
+                logger.warning(
+                    "nonferrous: 0 items parsed (status=%d, len=%d). "
+                    "Possible geo-block or HTML structure change.",
+                    r.status_code, len(r.text),
+                )
+            return items
         except Exception as e:
             logger.warning("nonferrous fetch failed err=%s", e)
             return []
