@@ -23,7 +23,7 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["scraper", "scraper.news", "parser", "parser.news", "exchange", "builder", "summarizer", "summarizer.providers"]
+packages = ["scraper", "scraper.news", "scraper.lme", "parser", "parser.news", "exchange", "builder", "summarizer", "summarizer.providers"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

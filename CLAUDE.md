@@ -32,6 +32,7 @@ PDF 가격과 독립. 4단계: scrape → parse (dedupe+classify) → summarize 
 - LLM provider 인터페이스 (`SummarizerProvider` Protocol) → 추후 groq/cerebras failover 확장 가능
 - 분류 1차 필터 (`parser/news/classify.py`) → 무관 헤드라인은 LLM 안 부름 (비용 절감)
 - 출력 스키마: `data/news/{year}.parquet` (date, source, url, url_hash, title, summary_ko, metals, sentiment, event_type, confidence, lang)
+- 이벤트 스키마: `data/events/{year}.parquet` (date, type, metal, magnitude, title, url, source) — LME stocks 일일 스냅샷 via westmetall
 - raw 아카이브 없음 (enriched parquet에 url+title 보존, 재요약 욕구 약해 제거)
 
 ## 보안 핀 (변경 시 갱신 필요)
