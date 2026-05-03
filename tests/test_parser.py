@@ -1,4 +1,5 @@
 from parser.page1 import parse_lme_prices, parse_settlement, parse_ev_metals
+from parser.page2 import parse_inventory, parse_shfe_spread, parse_market_factors
 
 
 SAMPLE_TABLE1 = [
@@ -85,3 +86,65 @@ def test_parse_ev_metals():
     assert result["cobalt"]["may26"] == 57761.04
     assert result["cobalt"]["jul26"] == 59634.97
     assert result["lithium"]["may26"] == 45966.33
+
+
+SAMPLE_INVENTORY = [
+    ['전일 반입 반출 금일 ON CANCELLED CW\n변동폭\n최종재고 (IN) (OUT) 최종재고 WRNT WRNT 변동폭', None, None, None, None, None, None, None, None],
+    [None, '399725', '725', '1775', '398675', '-1050', '346250', '52425', '3550'],
+    [None, '367050', '0', '2325', '364725', '-2325', '332600', '32125', '-2325'],
+    [None, '98650', '0', '2400', '96250', '-2400', '86000', '10250', '-1825'],
+    [None, '269575', '0', '1075', '268500', '-1075', '262825', '5675', '-1075'],
+    [None, '277398', '0', '1002', '276396', '-1002', '262758', '13638', '-1002'],
+    [None, '8590', '20', '135', '8475', '-115', '7940', '535', '65'],
+]
+
+SAMPLE_SHFE_SPREAD = [
+    ['LME 3M LME 최근월물 ...header...', None, None, None, None, None, None, None, None, None],
+    [None, '6.8265', '88,925', '88,561', '13%', '100,486', '100,074', '101,090', '101,080', '147.35'],
+    [None, '6.8265', '23,961', '24,431', '13%', '27,076', '27,608', '24,485', '24,440', '-464.00'],
+    [None, '6.8265', '23,138', '23,150', '13%', '26,146', '26,159', '23,700', '23,645', '-368.27'],
+    [None, '6.8265', '13,291', '13,314', '13%', '15,019', '15,045', '16,675', '16,645', '234.35'],
+    [None, '6.8265', '133,868', '132,853', '13%', '151,270', '150,124', '149,920', '149,430', '-101.66'],
+    ['SN', '6.8265', '335,864', '335,154', '13%', '379,526', '378,724', '384,190', '383,270', '665.96'],
+    ['Market Factors', None, None, None, None, None, None, None, None, None],
+]
+
+SAMPLE_MARKET_FACTORS = [
+    ['7240.58', '49626.53', '110 22/32', '101.46', '1471.94', '1.1741', '156.9200', '0.7213', '16.6239'],
+    ['31.57', '-25.61', '3/32', '-3.61', '-5.63', '0.0010', '0.40', '0.00', '-0.08'],
+    ['0.44%', '-0.05%', '0.07%', '-3.44%', '-0.38%', '0.09%', '0.25%', '0.37%', '-0.49%'],
+]
+
+
+def test_parse_inventory_copper():
+    result = parse_inventory(SAMPLE_INVENTORY)
+    cu = result["copper"]
+    assert cu["prev"] == 399725
+    assert cu["in"] == 725
+    assert cu["out"] == 1775
+    assert cu["current"] == 398675
+    assert cu["change"] == -1050
+    assert cu["on_warrant"] == 346250
+    assert cu["cancelled_warrant"] == 52425
+    assert cu["cw_change"] == 3550
+
+
+def test_parse_inventory_all_metals():
+    result = parse_inventory(SAMPLE_INVENTORY)
+    assert set(result.keys()) == {"copper", "aluminum", "zinc", "lead", "nickel", "tin"}
+
+
+def test_parse_shfe_spread():
+    result = parse_shfe_spread(SAMPLE_SHFE_SPREAD)
+    assert result["cny_usd"] == 6.8265
+    cu = result["metals"]["copper"]
+    assert cu["shfe_settle"] == 101080
+    assert cu["premium_usd"] == 147.35
+    sn = result["metals"]["tin"]
+    assert sn["premium_usd"] == 665.96
+
+
+def test_parse_market_factors():
+    result = parse_market_factors(SAMPLE_MARKET_FACTORS)
+    assert result["krw_usd"] == 1471.94
+    assert result["sp500"] == 7240.58
