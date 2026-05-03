@@ -9,10 +9,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "sample_rss.xml"
 def test_rss_feeds_constant_has_required_sources():
     sources = {f["source"] for f in RSS_FEEDS}
     assert "mining.com" in sources
-    assert "kitco" in sources
-    assert "hankyung" in sources
     assert "moneytoday" in sources
-    assert "commodity-tv" in sources
+    assert "snmnews" in sources
 
 
 def test_parse_fixture():

@@ -8,7 +8,6 @@ from pathlib import Path
 
 import zstandard as zstd
 
-from scraper.news.kores import KoresScraper
 from scraper.news.rss import RSSScraper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -18,7 +17,8 @@ RAW_DIR = Path("data/raw/news")
 
 
 def main() -> None:
-    scrapers = [RSSScraper(), KoresScraper()]
+    # KoresScraper deferred — URL reverse engineering needed (Phase 1b)
+    scrapers = [RSSScraper()]
     all_items = []
     for scraper in scrapers:
         items = scraper.fetch()

@@ -15,12 +15,14 @@ from scraper.news.base import NewsSource
 
 logger = logging.getLogger(__name__)
 
+USER_AGENT = "Mozilla/5.0 (compatible; metal-bulletin/0.1; +https://github.com/HeymoKou/metal-bulletin)"
+
+# Phase 1a verified-working feeds. Dead feeds (kitco/commodity-tv/hankyung RSS) removed.
+# KORES URL changed — deferred to Phase 1b reverse engineering.
 RSS_FEEDS: list[dict] = [
     {"source": "mining.com", "url": "https://www.mining.com/feed/", "lang": "en"},
-    {"source": "kitco", "url": "https://www.kitco.com/rss/KitcoNews.xml", "lang": "en"},
-    {"source": "commodity-tv", "url": "https://www.commodity-tv.com/api/feeds/rss/", "lang": "en"},
-    {"source": "hankyung", "url": "https://www.hankyung.com/feed/economy", "lang": "ko"},
     {"source": "moneytoday", "url": "https://rss.mt.co.kr/mt_news.xml", "lang": "ko"},
+    {"source": "snmnews", "url": "https://www.snmnews.com/rss/allArticle.xml", "lang": "ko"},
 ]
 
 
@@ -43,7 +45,7 @@ class RSSScraper(NewsSource):
         return out
 
     def _fetch_one(self, feed: dict, now: datetime) -> list[RawNewsItem]:
-        parsed = feedparser.parse(feed["url"])
+        parsed = feedparser.parse(feed["url"], agent=USER_AGENT)
         if parsed.bozo and not parsed.entries:
             return []
         items: list[RawNewsItem] = []
