@@ -387,7 +387,7 @@ function openChart(label, series) {
         <div><div class="lbl"><span data-readout="date">${esc(cur.date)}</span></div><div class="val mono" data-readout="val">${fmt(cur.v)}</div></div>
         <div><div class="lbl">변동 vs 시작 · vs start</div><div class="val mono ${dirClass(delta)}">${fmtSigned(delta)} <span class="muted">(${fmtSigned(deltaPct, 2)}%)</span></div></div>
       </div>
-      <svg viewBox="0 0 ${W} ${H}" width="100%" height="200">
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="200" style="touch-action:none">
         <defs><linearGradient id="exp-fill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="${stroke}" stop-opacity="0.22"/><stop offset="100%" stop-color="${stroke}" stop-opacity="0"/>
         </linearGradient></defs>
@@ -398,6 +398,10 @@ function openChart(label, series) {
         }).join('')}
         <path d="${dArea}" fill="url(#exp-fill)"/>
         <path d="${dLine}" fill="none" stroke="${stroke}" stroke-width="1.5"/>
+        <g data-hover style="display:none">
+          <line data-hover-line x1="0" x2="0" y1="${padT}" y2="${H-padB}" stroke="${stroke}" stroke-opacity="0.5" stroke-dasharray="2 3"/>
+          <circle data-hover-dot cx="0" cy="0" r="4" fill="${stroke}" stroke="var(--bg-1)" stroke-width="1.5"/>
+        </g>
         <text x="${padL}" y="${H-8}" class="chart-tick">${esc(dates[0])}</text>
         <text x="${W-padR}" y="${H-8}" text-anchor="end" class="chart-tick">${esc(dates[dates.length-1])}</text>
       </svg>
@@ -410,7 +414,11 @@ function openChart(label, series) {
   const svg = overlay.querySelector('svg');
   const readoutDate = overlay.querySelector('[data-readout="date"]');
   const readoutVal = overlay.querySelector('[data-readout="val"]');
+  const hoverGroup = overlay.querySelector('[data-hover]');
+  const hoverLine = overlay.querySelector('[data-hover-line]');
+  const hoverDot = overlay.querySelector('[data-hover-dot]');
   function onMove(e) {
+    e.preventDefault();
     const rect = svg.getBoundingClientRect();
     const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
     const x = cx * (W / rect.width);
@@ -420,11 +428,25 @@ function openChart(label, series) {
       if (d < bestD) { bestD = d; best = i; }
     }
     const p = series[best];
+    const [px, py] = pts[best];
     readoutDate.textContent = p.date;
     readoutVal.textContent = fmt(p.v);
+    hoverGroup.style.display = '';
+    hoverLine.setAttribute('x1', px);
+    hoverLine.setAttribute('x2', px);
+    hoverDot.setAttribute('cx', px);
+    hoverDot.setAttribute('cy', py);
+  }
+  function onLeave() {
+    hoverGroup.style.display = 'none';
+    readoutDate.textContent = cur.date;
+    readoutVal.textContent = fmt(cur.v);
   }
   svg.addEventListener('mousemove', onMove);
-  svg.addEventListener('touchmove', onMove);
+  svg.addEventListener('mouseleave', onLeave);
+  svg.addEventListener('touchstart', onMove, { passive: false });
+  svg.addEventListener('touchmove', onMove, { passive: false });
+  svg.addEventListener('touchend', onLeave);
 
   document.body.appendChild(overlay);
 }
