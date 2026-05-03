@@ -16,6 +16,9 @@ tmp/
 # Build cache (regeneratable from data/raw/*.parquet via builder)
 data/daily/
 
+# Node deps (smoke test only)
+node_modules/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -1,6 +1,7 @@
 // LME Non-Ferrous Desk — vanilla JS (serverless GitHub Pages)
 // Data: Apache Parquet via hyparquet (ESM, ~25KB, no WASM)
 import { parquetReadObjects } from 'https://cdn.jsdelivr.net/npm/hyparquet@1/+esm';
+import { compressors } from 'https://cdn.jsdelivr.net/npm/hyparquet-compressors@1/+esm';
 
 const DATA_BASE = '../data';
 
@@ -73,7 +74,7 @@ async function loadParquet(url) {
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`fetch ${url}: ${resp.status}`);
   const buf = await resp.arrayBuffer();
-  return await parquetReadObjects({ file: buf });
+  return await parquetReadObjects({ file: buf, compressors });
 }
 
 // --- Series helpers (work on nested entries) ---
