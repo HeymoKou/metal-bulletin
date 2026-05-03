@@ -12,6 +12,21 @@ METALS = {
 }
 
 
+def resolve_rate(daily: dict, rates_map: dict[str, float]) -> tuple[float | None, str | None]:
+    """Resolve USD/KRW for a daily entry.
+
+    Priority: BOK ECOS (rates_map) → PDF market.krw_usd → None.
+    Returns (rate, source) where source is 'bok' | 'pdf' | None.
+    """
+    bok_rate = rates_map.get(daily["date"])
+    if bok_rate:
+        return bok_rate, "bok"
+    pdf_rate = (daily.get("market") or {}).get("krw_usd")
+    if pdf_rate:
+        return pdf_rate, "pdf"
+    return None, None
+
+
 def build_metal_timeseries(metal: str, dailies: list[dict], rates_map: dict[str, float]) -> dict:
     info = METALS[metal]
     data = []
@@ -21,7 +36,7 @@ def build_metal_timeseries(metal: str, dailies: list[dict], rates_map: dict[str,
         if not m:
             continue
 
-        rate = rates_map.get(date)
+        rate, rate_source = resolve_rate(daily, rates_map)
         cash_close = None
         tm_close = None
 
@@ -38,6 +53,7 @@ def build_metal_timeseries(metal: str, dailies: list[dict], rates_map: dict[str,
             if tm_close is not None:
                 krw["3m"] = round(tm_close * rate)
             krw["rate"] = rate
+            krw["source"] = rate_source
 
         data.append({
             "date": date,

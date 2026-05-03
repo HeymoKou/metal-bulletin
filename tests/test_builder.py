@@ -1,4 +1,4 @@
-from builder.build import build_metal_timeseries, build_index
+from builder.build import build_metal_timeseries, build_index, resolve_rate
 
 
 DAILY_SAMPLE = {
@@ -35,6 +35,35 @@ def test_build_metal_timeseries():
     assert day["inventory"]["current"] == 398675
     assert day["krw"]["cash"] == round(12896.40 * 1365.20)
     assert day["krw"]["rate"] == 1365.20
+    assert day["krw"]["source"] == "bok"
+
+
+def test_resolve_rate_bok_priority():
+    rate, source = resolve_rate(DAILY_SAMPLE, {"2026-05-01": 1365.20})
+    assert rate == 1365.20
+    assert source == "bok"
+
+
+def test_resolve_rate_pdf_fallback():
+    rate, source = resolve_rate(DAILY_SAMPLE, {})
+    assert rate == 1471.94
+    assert source == "pdf"
+
+
+def test_resolve_rate_none():
+    daily = {"date": "2026-05-01", "market": {}}
+    rate, source = resolve_rate(daily, {})
+    assert rate is None
+    assert source is None
+
+
+def test_build_metal_timeseries_pdf_fallback():
+    dailies = [DAILY_SAMPLE]
+    result = build_metal_timeseries("copper", dailies, {})
+    day = result["data"][0]
+    assert day["krw"]["rate"] == 1471.94
+    assert day["krw"]["source"] == "pdf"
+    assert day["krw"]["cash"] == round(12896.40 * 1471.94)
 
 
 def test_build_index():
