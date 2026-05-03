@@ -9,84 +9,119 @@ from parser.page2 import parse_inventory, parse_shfe_spread, parse_market_factor
 from parser.page3 import parse_precious_metals
 
 METALS_ORDER = ["copper", "aluminum", "zinc", "lead", "nickel", "tin"]
-DATE_PATTERN = re.compile(r"(\d{4}-\d{2}-\d{2})")
+DATE_ISO = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+DATE_DMY = re.compile(r"(\d{2})-(\d{2})-(\d{4})")  # DD-MM-YYYY (older PDFs)
+DATE_DOTTED = re.compile(r"(\d{4})\.\s*(\d{1,2})\.\s*(\d{1,2})")  # YYYY. MM. DD
 
 
 def extract_date_from_pdf(pdf: pdfplumber.PDF) -> str:
     first_page_text = pdf.pages[0].extract_text() or ""
-    for line in first_page_text.split("\n")[:5]:
-        match = DATE_PATTERN.search(line)
-        if match:
-            return match.group(1)
+    for line in first_page_text.split("\n")[:8]:
+        m = DATE_ISO.search(line)
+        if m:
+            return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
+        m = DATE_DMY.search(line)
+        if m:
+            return f"{m.group(3)}-{m.group(2)}-{m.group(1)}"
+        m = DATE_DOTTED.search(line)
+        if m:
+            return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
     raise ValueError("Cannot extract date from PDF")
+
+
+def _safe(fn, *args, **kwargs):
+    """Run a parser fn; return ({}, error_msg) on failure."""
+    try:
+        return fn(*args, **kwargs), None
+    except Exception as e:
+        return {}, f"{fn.__name__}: {e}"
 
 
 def parse_pdf(pdf_path: Path) -> dict:
     pdf = pdfplumber.open(pdf_path)
-    if len(pdf.pages) < 3:
-        raise ValueError(f"Expected at least 3 pages, got {len(pdf.pages)}")
+    try:
+        if not pdf.pages:
+            raise ValueError("Empty PDF")
 
-    date = extract_date_from_pdf(pdf)
+        date = extract_date_from_pdf(pdf)
+        warnings: list[str] = []
 
-    p1_tables = pdf.pages[0].extract_tables()
-    if len(p1_tables) < 3:
-        raise ValueError(f"Page 1: expected 3+ tables, got {len(p1_tables)}")
-    lme_prices = parse_lme_prices(p1_tables[0])
-    settlement = parse_settlement(p1_tables[1])
-    ev_metals = parse_ev_metals(p1_tables[2])
+        # Page 1
+        p1_tables = pdf.pages[0].extract_tables() if len(pdf.pages) >= 1 else []
+        lme_prices, err = _safe(parse_lme_prices, p1_tables[0]) if len(p1_tables) >= 1 else ({}, "no p1 table 0")
+        if err: warnings.append(f"lme: {err}")
+        settlement, err = _safe(parse_settlement, p1_tables[1]) if len(p1_tables) >= 2 else ({}, "no p1 table 1")
+        if err: warnings.append(f"settlement: {err}")
+        ev_metals, err = _safe(parse_ev_metals, p1_tables[2]) if len(p1_tables) >= 3 else ({}, None)
+        if err: warnings.append(f"ev: {err}")
 
-    p2_tables = pdf.pages[1].extract_tables()
-    if len(p2_tables) < 6:
-        raise ValueError(f"Page 2: expected 6+ tables, got {len(p2_tables)}")
-    inventory = parse_inventory(p2_tables[0])
+        # Page 2
+        p2_tables = pdf.pages[1].extract_tables() if len(pdf.pages) >= 2 else []
+        inventory, err = _safe(parse_inventory, p2_tables[0]) if p2_tables else ({}, "no p2")
+        if err: warnings.append(f"inv: {err}")
 
-    shfe_idx = None
-    market_idx = None
-    for idx, t in enumerate(p2_tables):
-        header = str(t[0][0]) if t and t[0] else ""
-        if "SHFE" in header and "LME" in header:
-            shfe_idx = idx
-        if shfe_idx is not None and idx == shfe_idx + 1:
-            market_idx = idx
-
-    if shfe_idx is None:
+        shfe_idx = None
+        market_idx = None
         for idx, t in enumerate(p2_tables):
-            if len(t) >= 7 and len(t[0]) >= 10:
-                cell = str(t[0][0]) if t[0][0] else ""
-                if "CNY" in cell or "증치세" in cell:
-                    shfe_idx = idx
-                    break
+            header = str(t[0][0]) if t and t[0] else ""
+            if "SHFE" in header and "LME" in header:
+                shfe_idx = idx
+            if shfe_idx is not None and idx == shfe_idx + 1:
+                market_idx = idx
+        if shfe_idx is None:
+            for idx, t in enumerate(p2_tables):
+                if len(t) >= 7 and t[0] and len(t[0]) >= 10:
+                    cell = str(t[0][0]) if t[0][0] else ""
+                    if "CNY" in cell or "증치세" in cell:
+                        shfe_idx = idx
+                        break
 
-    if shfe_idx is None:
-        raise ValueError("Page 2: SHFE spread table not found")
+        if shfe_idx is not None:
+            shfe, err = _safe(parse_shfe_spread, p2_tables[shfe_idx])
+            if err: warnings.append(f"shfe: {err}")
+        else:
+            shfe = {}
+            warnings.append("shfe: table not found")
 
-    shfe = parse_shfe_spread(p2_tables[shfe_idx])
-    market = parse_market_factors(p2_tables[market_idx]) if market_idx and market_idx < len(p2_tables) else {}
+        if market_idx is not None and market_idx < len(p2_tables):
+            market, err = _safe(parse_market_factors, p2_tables[market_idx])
+            if err: warnings.append(f"market: {err}")
+        else:
+            market = {}
 
-    p3_tables = pdf.pages[2].extract_tables()
-    if len(p3_tables) < 1:
-        raise ValueError(f"Page 3: expected 1+ tables, got {len(p3_tables)}")
-    precious = parse_precious_metals(p3_tables[0])
+        # Page 3
+        p3_tables = pdf.pages[2].extract_tables() if len(pdf.pages) >= 3 else []
+        precious, err = _safe(parse_precious_metals, p3_tables[0]) if p3_tables else ({}, None)
+        if err: warnings.append(f"precious: {err}")
 
-    metals = {}
-    for metal in METALS_ORDER:
-        metals[metal] = {
-            "lme": lme_prices[metal],
-            "settlement": settlement[metal],
-            "inventory": inventory[metal],
-            "shfe": shfe["metals"][metal],
+        # Combine per-metal
+        shfe_metals = (shfe or {}).get("metals", {}) if isinstance(shfe, dict) else {}
+        metals = {}
+        for metal in METALS_ORDER:
+            metals[metal] = {
+                "lme": lme_prices.get(metal, {}) if isinstance(lme_prices, dict) else {},
+                "settlement": settlement.get(metal, {}) if isinstance(settlement, dict) else {},
+                "inventory": inventory.get(metal, {}) if isinstance(inventory, dict) else {},
+                "shfe": shfe_metals.get(metal, {}),
+            }
+
+        # Require at least LME prices for at least one metal — otherwise too broken to keep
+        if not any(m["lme"] for m in metals.values()):
+            raise ValueError(f"no LME data extracted (warnings: {warnings})")
+
+        out = {
+            "date": date,
+            "metals": metals,
+            "ev_metals": ev_metals if isinstance(ev_metals, dict) else {},
+            "precious": precious if isinstance(precious, dict) else {},
+            "fx": {"cny_usd": (shfe or {}).get("cny_usd")} if isinstance(shfe, dict) else {},
+            "market": market if isinstance(market, dict) else {},
         }
-
-    pdf.close()
-
-    return {
-        "date": date,
-        "metals": metals,
-        "ev_metals": ev_metals,
-        "precious": precious,
-        "fx": {"cny_usd": shfe["cny_usd"]},
-        "market": market,
-    }
+        if warnings:
+            out["_warnings"] = warnings
+        return out
+    finally:
+        pdf.close()
 
 
 def run(mode: str, data_dir: Path, tmp_dir: Path):

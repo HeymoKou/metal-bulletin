@@ -1,0 +1,377 @@
+{
+  "date": "2024-10-24",
+  "metals": {
+    "copper": {
+      "lme": {
+        "cash": {
+          "prev_close": 9377.54,
+          "open": 9377.42,
+          "high": 9509.42,
+          "low": 9358.42,
+          "close": 9410.42,
+          "change": 32.88
+        },
+        "3m": {
+          "prev_close": 9520.5,
+          "open": 9515.0,
+          "high": 9647.0,
+          "low": 9496.0,
+          "close": 9548.0,
+          "change": 27.5
+        },
+        "bid": -141.58,
+        "ask": -137.58,
+        "open_interest": 274549
+      },
+      "settlement": {
+        "cash": 9413.0,
+        "3m": 9560.0,
+        "monthly_avg": {
+          "cash": 9254.5,
+          "3m": 9384.86
+        },
+        "prev_monthly_avg": {
+          "cash": 9367.42,
+          "3m": 9507.0
+        },
+        "forwards": {
+          "m1": 9412.51,
+          "m2": 9459.9,
+          "m3": 9496.85
+        }
+      },
+      "inventory": {
+        "prev": 279625,
+        "in": 0,
+        "out": 1300,
+        "current": 278325,
+        "change": -1300,
+        "on_warrant": 262325,
+        "cancelled_warrant": 16000,
+        "cw_change": -1050
+      },
+      "shfe": {
+        "lme_3m_cny": 68570,
+        "lme_near_cny": 67897,
+        "lme_3m_incl_tax": 77484,
+        "lme_near_incl_tax": 76724,
+        "shfe_3m": 76600,
+        "shfe_settle": 76530,
+        "premium_usd": -27.27
+      }
+    },
+    "aluminum": {
+      "lme": {
+        "cash": {
+          "prev_close": 2645.12,
+          "open": 2630.01,
+          "high": 2682.01,
+          "low": 2580.01,
+          "close": 2605.01,
+          "change": -40.11
+        },
+        "3m": {
+          "prev_close": 2670.0,
+          "open": 2663.0,
+          "high": 2715.0,
+          "low": 2613.0,
+          "close": 2638.0,
+          "change": -32.0
+        },
+        "bid": -36.99,
+        "ask": -32.99,
+        "open_interest": 662413
+      },
+      "settlement": {
+        "cash": 2643.0,
+        "3m": 2677.0,
+        "monthly_avg": {
+          "cash": 2451.67,
+          "3m": 2468.57
+        },
+        "prev_monthly_avg": {
+          "cash": 2615.01,
+          "3m": 2650.0
+        },
+        "forwards": {
+          "m1": 2628.51,
+          "m2": 2637.47,
+          "m3": 2646.17
+        }
+      },
+      "inventory": {
+        "prev": 752850,
+        "in": 0,
+        "out": 2500,
+        "current": 750350,
+        "change": -2500,
+        "on_warrant": 402625,
+        "cancelled_warrant": 347725,
+        "cw_change": -2500
+      },
+      "shfe": {
+        "lme_3m_cny": 19274,
+        "lme_near_cny": 19121,
+        "lme_3m_incl_tax": 21779,
+        "lme_near_incl_tax": 21606,
+        "shfe_3m": 21060,
+        "shfe_settle": 21045,
+        "premium_usd": -78.9
+      }
+    },
+    "zinc": {
+      "lme": {
+        "3m": {
+          "prev_close": 3150.0,
+          "open": 3147.0,
+          "high": 3284.0,
+          "low": 3146.0,
+          "close": 3174.5,
+          "change": 24.5
+        },
+        "bid": 24.14,
+        "ask": 26.14,
+        "open_interest": 256846
+      },
+      "settlement": {
+        "cash": 3237.5,
+        "3m": 3191.0,
+        "monthly_avg": {
+          "cash": 2840.79,
+          "3m": 2883.86
+        },
+        "prev_monthly_avg": {
+          "cash": 3199.64,
+          "3m": 3174.5
+        },
+        "forwards": {
+          "m1": 3199.61,
+          "m2": 3196.08,
+          "m3": 3184.14
+        }
+      },
+      "inventory": {
+        "prev": 232150,
+        "in": 10100,
+        "out": 3100,
+        "current": 239150,
+        "change": 7000,
+        "on_warrant": 218675,
+        "cancelled_warrant": 20475,
+        "cw_change": -3000
+      },
+      "shfe": {
+        "lme_3m_cny": 23287,
+        "lme_near_cny": 23466,
+        "lme_3m_incl_tax": 26314,
+        "lme_near_incl_tax": 26516,
+        "shfe_3m": 25210,
+        "shfe_settle": 25305,
+        "premium_usd": -170.23
+      }
+    },
+    "lead": {
+      "lme": {
+        "3m": {
+          "prev_close": 2058.5,
+          "open": 2056.0,
+          "high": 2082.0,
+          "low": 2053.5,
+          "close": 2071.5,
+          "change": 13.0
+        },
+        "bid": -34.06,
+        "ask": -32.06,
+        "open_interest": 139640
+      },
+      "settlement": {
+        "cash": 2039.0,
+        "3m": 2074.0,
+        "monthly_avg": {
+          "cash": 2007.36,
+          "3m": 2045.26
+        },
+        "prev_monthly_avg": {
+          "cash": 2041.44,
+          "3m": 2074.5
+        },
+        "forwards": {
+          "m1": 2051.44,
+          "m2": 2064.18,
+          "m3": 2074.57
+        }
+      },
+      "inventory": {
+        "prev": 192475,
+        "in": 0,
+        "out": 1350,
+        "current": 191125,
+        "change": -1350,
+        "on_warrant": 182075,
+        "cancelled_warrant": 9050,
+        "cw_change": 500
+      },
+      "shfe": {
+        "lme_3m_cny": 14755,
+        "lme_near_cny": 14591,
+        "lme_3m_incl_tax": 16673,
+        "lme_near_incl_tax": 16488,
+        "shfe_3m": 16825,
+        "shfe_settle": 16785,
+        "premium_usd": 41.77
+      }
+    },
+    "nickel": {
+      "lme": {
+        "3m": {
+          "prev_close": 16310.0,
+          "open": 16275.0,
+          "high": 16400.0,
+          "low": 16225.0,
+          "close": 16260.0,
+          "change": -50.0
+        },
+        "bid": -252.63,
+        "ask": -242.63,
+        "open_interest": 210080
+      },
+      "settlement": {
+        "cash": 16035.0,
+        "3m": 16280.0,
+        "monthly_avg": {
+          "cash": 16117.86,
+          "3m": 16366.67
+        },
+        "prev_monthly_avg": {
+          "cash": 16047.37,
+          "3m": 16295.0
+        },
+        "forwards": {
+          "m1": 16119.37,
+          "m2": 16194.58,
+          "m3": 16270.76
+        }
+      },
+      "inventory": {
+        "prev": 135096,
+        "in": 744,
+        "out": 24,
+        "current": 135816,
+        "change": 720,
+        "on_warrant": 126150,
+        "cancelled_warrant": 9666,
+        "cw_change": 0
+      },
+      "shfe": {
+        "lme_3m_cny": 116275,
+        "lme_near_cny": 115026,
+        "lme_3m_incl_tax": 131391,
+        "lme_near_incl_tax": 129979,
+        "shfe_3m": 126680,
+        "shfe_settle": 126280,
+        "premium_usd": -519.81
+      }
+    },
+    "tin": {
+      "lme": {
+        "3m": {
+          "prev_close": 30900.0,
+          "open": 31000.0,
+          "high": 31400.0,
+          "low": 30975.0,
+          "close": 31100.0,
+          "change": 200.0
+        },
+        "bid": -158.0,
+        "ask": -148.0,
+        "open_interest": 19117
+      },
+      "settlement": {
+        "cash": 31250.0,
+        "3m": 31375.0,
+        "monthly_avg": {
+          "cash": 31643.81,
+          "3m": 31670.0
+        },
+        "prev_monthly_avg": {
+          "cash": 30982.0,
+          "3m": 31135.0
+        },
+        "forwards": {
+          "m1": 31062.0,
+          "m2": 31117.0,
+          "m3": 31157.0
+        }
+      },
+      "inventory": {
+        "prev": 4810,
+        "in": 30,
+        "out": 0,
+        "current": 4840,
+        "change": 30,
+        "on_warrant": 4520,
+        "cancelled_warrant": 320,
+        "cw_change": 50
+      },
+      "shfe": {
+        "lme_3m_cny": 222588,
+        "lme_near_cny": 222069,
+        "lme_3m_incl_tax": 251525,
+        "lme_near_incl_tax": 250938,
+        "shfe_3m": 255460,
+        "shfe_settle": 255070,
+        "premium_usd": 580.67
+      }
+    }
+  },
+  "ev_metals": {
+    "cobalt": {
+      "oct24": 21873.69,
+      "dec24": 21810.53
+    },
+    "lithium": {
+      "oct24": 9560.87
+    }
+  },
+  "precious": {
+    "gold": {
+      "spot": 2734.03,
+      "high": 2743.12,
+      "low": 2716.35
+    },
+    "silver": {
+      "spot": 33.616,
+      "high": 34.3,
+      "low": 33.249
+    },
+    "platinum": {
+      "spot": 1024.75,
+      "high": 1043.7,
+      "low": 1020.15,
+      "am_fix": 1037.0,
+      "pm_fix": 1035.0
+    },
+    "palladium": {
+      "spot": 1160.0,
+      "high": 1166.45,
+      "low": 1070.14,
+      "am_fix": 1136.0,
+      "pm_fix": 1135.0
+    }
+  },
+  "fx": {
+    "cny_usd": 7.116
+  },
+  "market": {
+    "sp500": 5802.11,
+    "dow": 42333.07,
+    "wti": 69.88,
+    "krw_usd": 1380.92,
+    "eur_usd": 1.0814,
+    "jpy_usd": 151.7,
+    "sp500_change": 4.69,
+    "dow_change": -181.88,
+    "wti_change": -0.89,
+    "krw_change": -1.28
+  }
+}
