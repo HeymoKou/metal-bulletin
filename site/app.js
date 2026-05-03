@@ -6,10 +6,10 @@ import { compressors } from 'https://cdn.jsdelivr.net/npm/hyparquet-compressors@
 
 const DATA_BASE = '../data';
 
-const METAL_NAMES_KO = { copper: '전기동', aluminum: '알루미늄', zinc: '아연', nickel: '니켈', lead: '납', tin: '주석' };
-const METAL_NAMES_EN = { copper: 'Copper', aluminum: 'Aluminium', zinc: 'Zinc', nickel: 'Nickel', lead: 'Lead', tin: 'Tin' };
-const METAL_SYMBOLS  = { copper: 'Cu', aluminum: 'Al', zinc: 'Zn', nickel: 'Ni', lead: 'Pb', tin: 'Sn' };
-const METAL_ORDER    = ['copper', 'aluminum', 'zinc', 'nickel', 'lead', 'tin'];
+// Metal metadata is sourced from data/manifest.json (single source of truth).
+// These are populated in init() after manifest loads; modules use them via closures.
+let METALS = {};       // { copper: { symbol, unit, name_ko, name_en, years }, ... }
+let METAL_ORDER = [];  // canonical render order
 
 // hyparquet returns BigInt for int64 columns — coerce to Number for JS math.
 const num = (v) => v == null ? null : (typeof v === 'bigint' ? Number(v) : v);
@@ -153,9 +153,9 @@ function renderHero(metal, latest, series) {
   const mainChange = tm.change ?? cash.change;
   const dir = dirClass(mainChange);
   const pctVal = (mainChange != null && tm.prev_close) ? (mainChange / tm.prev_close * 100) : null;
-  const sym = METAL_SYMBOLS[metal];
-  const ko = METAL_NAMES_KO[metal];
-  const en = METAL_NAMES_EN[metal];
+  const sym = METALS[metal].symbol;
+  const ko = METALS[metal].name_ko;
+  const en = METALS[metal].name_en;
 
   return `<div class="hero hero--price">
     <div class="hero__top">
@@ -200,8 +200,8 @@ function row(ko, en, value, opts = {}) {
 
 function renderMetalSection(metal, ts) {
   const latest = ts && ts.data && ts.data[0];
-  const ko = METAL_NAMES_KO[metal];
-  const sym = METAL_SYMBOLS[metal];
+  const ko = METALS[metal].name_ko;
+  const sym = METALS[metal].symbol;
   if (!latest) return `<section class="metal-section" data-metal="${metal}" data-screen-label="${sym} ${ko}"></section>`;
 
   const series = priceSeries(ts.data, 'close');
@@ -352,7 +352,7 @@ function renderNav(metals) {
     const pct = (change != null && tm.prev_close) ? (change / tm.prev_close * 100) : null;
     const dir = dirClass(change);
     return `<button class="nav-pill nav-pill--${dir}" data-metal="${m}">
-      <span class="nav-pill__sym mono">${METAL_SYMBOLS[m]}</span>
+      <span class="nav-pill__sym mono">${METALS[m].symbol}</span>
       <div class="nav-pill__col">
         <span class="nav-pill__price mono">$${fmt(close, close > 1000 ? 0 : 2)}</span>
         <span class="nav-pill__pct mono ${dir}">${arrow(change)} ${pct == null ? '—' : fmtSigned(pct, 2) + '%'}</span>
@@ -544,7 +544,11 @@ async function loadFullSeries(metal, manifest) {
 }
 
 async function loadAll() {
-  const manifest = await fetch(`${DATA_BASE}/manifest.json`).then(r => r.json()).catch(() => null);
+  const manifest = await fetch(`${DATA_BASE}/manifest.json`).then(r => r.json());
+  // Populate module-level metal metadata from manifest.
+  METALS = manifest.metals;
+  METAL_ORDER = Object.keys(METALS);
+
   const latestArr = await Promise.all(METAL_ORDER.map(m =>
     loadLatest(m).catch(err => { console.warn(`load ${m}:`, err); return []; })
   ));
@@ -552,8 +556,8 @@ async function loadAll() {
   METAL_ORDER.forEach((m, i) => {
     metals[m] = {
       metal: m,
-      symbol: manifest?.metals?.[m]?.symbol,
-      unit: manifest?.metals?.[m]?.unit,
+      symbol: METALS[m].symbol,
+      unit: METALS[m].unit,
       data: latestArr[i],
     };
   });
@@ -620,7 +624,7 @@ async function init() {
       const latestData = metals[m]?.data;
       if (!latestData?.length) return;
       const quickSeries = priceSeries(latestData, 'close');
-      const title = `${METAL_NAMES_KO[m]} · ${METAL_SYMBOLS[m]} 3M`;
+      const title = `${METALS[m].name_ko} · ${METALS[m].symbol} 3M`;
       openChart(title, quickSeries);
       // Async upgrade: full series across all years.
       const years = manifest?.metals?.[m]?.years || [];

@@ -19,12 +19,12 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 METALS = {
-    "copper":   {"symbol": "Cu", "unit": "$/ton"},
-    "aluminum": {"symbol": "Al", "unit": "$/ton"},
-    "zinc":     {"symbol": "Zn", "unit": "$/ton"},
-    "lead":     {"symbol": "Pb", "unit": "$/ton"},
-    "nickel":   {"symbol": "Ni", "unit": "$/ton"},
-    "tin":      {"symbol": "Sn", "unit": "$/ton"},
+    "copper":   {"symbol": "Cu", "unit": "$/ton", "name_ko": "전기동",   "name_en": "Copper"},
+    "aluminum": {"symbol": "Al", "unit": "$/ton", "name_ko": "알루미늄", "name_en": "Aluminium"},
+    "zinc":     {"symbol": "Zn", "unit": "$/ton", "name_ko": "아연",     "name_en": "Zinc"},
+    "nickel":   {"symbol": "Ni", "unit": "$/ton", "name_ko": "니켈",     "name_en": "Nickel"},
+    "lead":     {"symbol": "Pb", "unit": "$/ton", "name_ko": "납",       "name_en": "Lead"},
+    "tin":      {"symbol": "Sn", "unit": "$/ton", "name_ko": "주석",     "name_en": "Tin"},
 }
 
 LATEST_WINDOW = 90
@@ -276,10 +276,10 @@ def build_manifest(dailies: list[dict], years_per_metal: dict[str, list[int]]) -
         "format": "parquet",
         "compression": "zstd",
         "last_updated": dates[-1] if dates else None,
+        # Order preserved → frontend uses Object.keys(metals) as canonical metal order.
         "metals": {
             m: {
-                "symbol": METALS[m]["symbol"],
-                "unit": METALS[m]["unit"],
+                **METALS[m],
                 "years": years_per_metal.get(m, []),
             }
             for m in METALS
