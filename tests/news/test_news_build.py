@@ -64,3 +64,21 @@ def test_build_schema_columns():
         "sentiment", "event_type", "confidence", "lang",
     }
     assert required.issubset(cols)
+
+
+def test_dedupe_prefers_enriched_over_null(tmp_path: Path):
+    """Codex HIGH fix: 첫 run LLM 실패로 null summary 저장 → 다음 run 정상 summary로 덮어써야.
+    이전 동작은 keep='first'로 null이 영구 보존됨."""
+    out_dir = tmp_path / "news"
+    # First run: failed LLM, null summary
+    null_item = _enriched(url="https://e.com/1", summary=None)
+    build_news_parquet([null_item], out_dir, year=2026)
+
+    # Second run: same URL but with summary
+    enriched_item = _enriched(url="https://e.com/1", summary="제대로 된 요약")
+    build_news_parquet([enriched_item], out_dir, year=2026)
+
+    table = pq.read_table(out_dir / "2026.parquet")
+    assert table.num_rows == 1
+    summaries = table.column("summary_ko").to_pylist()
+    assert summaries[0] == "제대로 된 요약"

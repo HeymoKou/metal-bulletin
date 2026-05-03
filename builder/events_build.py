@@ -74,8 +74,13 @@ def main() -> None:
     if not events:
         logger.warning("no events fetched")
         return
-    year = datetime.now().year
-    build_events_parquet(events, Path("data/events"), year)
+    # Group by record date year (handles year-boundary + backfill).
+    by_year: dict[int, list[EventItem]] = {}
+    for e in events:
+        d = e.date if hasattr(e.date, "year") else datetime.fromisoformat(str(e.date)).date()
+        by_year.setdefault(d.year, []).append(e)
+    for year, year_events in by_year.items():
+        build_events_parquet(year_events, Path("data/events"), year)
 
 
 if __name__ == "__main__":

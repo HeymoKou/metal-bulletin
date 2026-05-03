@@ -67,7 +67,12 @@ def build_news_parquet(items: list[EnrichedNewsItem], out_dir: Path, year: int) 
         existing = pq.read_table(out_file)
         combined = pa.concat_tables([existing, new_table], promote_options="default")
         df = combined.to_pandas()
+        # Repair stale null-enriched rows: prefer rows with summary_ko over null ones.
+        # Sort: non-null summary first, then keep first per url_hash.
+        df["_has_summary"] = df["summary_ko"].notna().astype(int)
+        df = df.sort_values(["_has_summary", "fetched_at"], ascending=[False, False])
         df = df.drop_duplicates(subset=["url_hash"], keep="first")
+        df = df.drop(columns=["_has_summary"])
         combined = pa.Table.from_pandas(df, schema=NEWS_SCHEMA, preserve_index=False)
     else:
         combined = new_table
@@ -87,8 +92,12 @@ def main() -> None:
     if not items:
         return
 
-    year = datetime.now().year
-    build_news_parquet(items, Path("data/news"), year)
+    # Group items by their fetched_at year — supports backfill across year boundaries.
+    by_year: dict[int, list[EnrichedNewsItem]] = {}
+    for it in items:
+        by_year.setdefault(it.fetched_at.year, []).append(it)
+    for year, year_items in by_year.items():
+        build_news_parquet(year_items, Path("data/news"), year)
 
 
 if __name__ == "__main__":

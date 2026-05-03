@@ -60,5 +60,9 @@ jobs:
             echo "no changes"
           else
             git commit -m "news: $(date -u +%Y-%m-%dT%H:%MZ)"
-            git push
+            # Pull-rebase to handle concurrent commits to main (concurrency group only
+            # serializes news.yml, not unrelated commits). Up to 3 retries.
+            for i in 1 2 3; do
+              git pull --rebase --autostash origin main && git push && break || sleep $((i * 5))
+            done
           fi

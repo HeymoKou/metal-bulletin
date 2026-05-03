@@ -32,16 +32,16 @@ METAL_KO_KEYWORDS: dict[str, list[str]] = {
     "tin":      ["주석"],
 }
 
-LME_GLOBAL_PATTERNS = [
-    re.compile(r"\blme\b", re.I),
-    re.compile(r"\blondon metal exchange\b", re.I),
-    re.compile(r"\bshfe\b", re.I),
-]
-LME_GLOBAL_KO = ["비철", "비철금속"]
+_LME_GLOBAL_REMOVED = True  # noqa: F841 — kept as marker; see classify_metals docstring
 
 
 def classify_metals(item: RawNewsItem) -> list[str]:
-    """Return matched metal codes. Empty if no match. 'all' if only LME-global hit."""
+    """Return matched metal codes. Empty if no specific metal hit.
+
+    Bare LME/SHFE/비철 mention WITHOUT a specific metal returns []. Reason:
+    'LME announces holiday' or 'SHFE trading halt' have no actionable metal-specific signal,
+    and 'all' tagged everything to bypass classify, polluting downstream LLM/storage.
+    """
     haystack = item.title + " " + (item.snippet or "")
     matched: list[str] = []
     for metal in METAL_PATTERNS:
@@ -49,12 +49,6 @@ def classify_metals(item: RawNewsItem) -> list[str]:
         ko_hit = any(kw in haystack for kw in METAL_KO_KEYWORDS[metal])
         if en_hit or ko_hit:
             matched.append(metal)
-
-    if not matched:
-        lme_en = any(p.search(haystack) for p in LME_GLOBAL_PATTERNS)
-        lme_ko = any(kw in haystack for kw in LME_GLOBAL_KO)
-        if lme_en or lme_ko:
-            matched.append("all")
     return matched
 
 

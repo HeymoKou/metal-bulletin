@@ -44,6 +44,10 @@ def test_classify_handles_none_snippet():
     assert metals == ["zinc"]
 
 
-def test_lme_only_match_classifies_all():
+def test_lme_only_no_metal_returns_empty():
+    """Codex review: bare LME/SHFE 단독 언급은 false positive 양산 → 빈 리스트.
+    Metal-specific 언급 있을 때만 matched."""
     metals = classify_metals(_item("LME warehouse stocks at record low"))
-    assert "all" in metals or len(metals) >= 1
+    assert metals == []
+    metals = classify_metals(_item("LME copper stocks at record low"))
+    assert metals == ["copper"]
