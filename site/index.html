@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>비철금속 시세</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="header">
+    <span id="last-updated"></span>
+    <span id="krw-rate"></span>
+  </header>
+
+  <nav id="metal-nav">
+    <button data-metal="copper" class="active">Cu</button>
+    <button data-metal="aluminum">Al</button>
+    <button data-metal="zinc">Zn</button>
+    <button data-metal="nickel">Ni</button>
+    <button data-metal="lead">Pb</button>
+    <button data-metal="tin">Sn</button>
+  </nav>
+
+  <main id="scroll-container">
+    <section class="metal-section" data-metal="copper"></section>
+    <section class="metal-section" data-metal="aluminum"></section>
+    <section class="metal-section" data-metal="zinc"></section>
+    <section class="metal-section" data-metal="nickel"></section>
+    <section class="metal-section" data-metal="lead"></section>
+    <section class="metal-section" data-metal="tin"></section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
