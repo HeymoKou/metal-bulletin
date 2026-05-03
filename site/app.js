@@ -411,9 +411,12 @@ function openChart(label, series, opts = {}) {
   const ticks = [max, (max + min) / 2, min];
   const dates = series.map(p => p.date);
 
-  const cur = series[series.length - 1];
-  const delta = cur.v - series[0].v;
-  const deltaPct = delta / series[0].v * 100;
+  const latest = series[series.length - 1];
+  // "vs 최신" semantics: how much has price moved from the hovered date to now.
+  // Default (no hover): use the previous day → daily change.
+  const defaultRef = series.length >= 2 ? series[series.length - 2] : latest;
+  const initDelta = latest.v - defaultRef.v;
+  const initDeltaPct = defaultRef.v ? (initDelta / defaultRef.v * 100) : 0;
 
   const overlay = document.createElement('div');
   overlay.className = 'chart-overlay';
@@ -429,8 +432,8 @@ function openChart(label, series, opts = {}) {
         <button class="chart-overlay__close" aria-label="close">✕</button>
       </div>
       <div class="chart-overlay__readout">
-        <div><div class="lbl"><span data-readout="date">${esc(cur.date)}</span></div><div class="val mono" data-readout="val">${fmtCcy(cur.v)}</div></div>
-        <div><div class="lbl">변동 vs 시작 · vs start</div><div class="val mono ${dirClass(delta)}">${fmtCcySigned(delta)} <span class="muted">(${fmtSigned(deltaPct, 2)}%)</span></div></div>
+        <div><div class="lbl"><span data-readout="date">${esc(defaultRef.date)} → ${esc(latest.date)}</span></div><div class="val mono" data-readout="val">${fmtCcy(defaultRef.v)} → ${fmtCcy(latest.v)}</div></div>
+        <div><div class="lbl"><span data-readout="dlbl">최신까지 변동 · vs latest</span></div><div class="val mono ${dirClass(initDelta)}" data-readout="delta">${fmtCcySigned(initDelta)} <span class="muted">(${fmtSigned(initDeltaPct, 2)}%)</span></div></div>
       </div>
       <svg viewBox="0 0 ${W} ${H}" width="100%" height="200" style="touch-action:none">
         <defs><linearGradient id="exp-fill" x1="0" y1="0" x2="0" y2="1">
@@ -459,6 +462,8 @@ function openChart(label, series, opts = {}) {
   const svg = overlay.querySelector('svg');
   const readoutDate = overlay.querySelector('[data-readout="date"]');
   const readoutVal = overlay.querySelector('[data-readout="val"]');
+  const readoutDlbl = overlay.querySelector('[data-readout="dlbl"]');
+  const readoutDelta = overlay.querySelector('[data-readout="delta"]');
   const hoverGroup = overlay.querySelector('[data-hover]');
   const hoverLine = overlay.querySelector('[data-hover-line]');
   const hoverDot = overlay.querySelector('[data-hover-dot]');
@@ -474,8 +479,14 @@ function openChart(label, series, opts = {}) {
     }
     const p = series[best];
     const [px, py] = pts[best];
-    readoutDate.textContent = p.date;
-    readoutVal.textContent = fmtCcy(p.v);
+    const d = latest.v - p.v;
+    const dPct = p.v ? (d / p.v * 100) : 0;
+    readoutDate.textContent = `${p.date} → ${latest.date}`;
+    readoutVal.textContent = `${fmtCcy(p.v)} → ${fmtCcy(latest.v)}`;
+    readoutDlbl.textContent = '이 날 → 최신';
+    readoutDelta.classList.remove('up', 'down', 'flat');
+    readoutDelta.classList.add(dirClass(d));
+    readoutDelta.innerHTML = `${fmtCcySigned(d)} <span class="muted">(${fmtSigned(dPct, 2)}%)</span>`;
     hoverGroup.style.display = '';
     hoverLine.setAttribute('x1', px);
     hoverLine.setAttribute('x2', px);
@@ -484,8 +495,12 @@ function openChart(label, series, opts = {}) {
   }
   function onLeave() {
     hoverGroup.style.display = 'none';
-    readoutDate.textContent = cur.date;
-    readoutVal.textContent = fmtCcy(cur.v);
+    readoutDate.textContent = `${defaultRef.date} → ${latest.date}`;
+    readoutVal.textContent = `${fmtCcy(defaultRef.v)} → ${fmtCcy(latest.v)}`;
+    readoutDlbl.textContent = '최신까지 변동 · vs latest';
+    readoutDelta.classList.remove('up', 'down', 'flat');
+    readoutDelta.classList.add(dirClass(initDelta));
+    readoutDelta.innerHTML = `${fmtCcySigned(initDelta)} <span class="muted">(${fmtSigned(initDeltaPct, 2)}%)</span>`;
   }
   svg.addEventListener('mousemove', onMove);
   svg.addEventListener('mouseleave', onLeave);
