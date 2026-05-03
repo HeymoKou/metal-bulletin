@@ -165,9 +165,6 @@ function renderHero(metal, latest, series) {
           <div class="hero__en">${en} · LME 3M · USD/t</div>
         </div>
       </div>
-      <button class="hero__expand" data-expand="${metal}" aria-label="expand chart">
-        <span class="mono">30D</span> <span style="opacity:.5">↗</span>
-      </button>
     </div>
     <div class="hero__price-row">
       <span class="hero__price mono" data-copy="${mainPrice ?? ''}"><span class="hero__ccy">$</span>${fmt(mainPrice)}</span>
