@@ -16,6 +16,10 @@ tmp/
 # Build cache (regeneratable from data/raw/*.parquet via builder)
 data/daily/
 
+# News pipeline 중간 파일 (workflow에서 cleanup, 로컬 debug 잔존 방지)
+data/news_pending.json
+data/news_enriched.json
+
 # Node deps (smoke test only)
 node_modules/
 
