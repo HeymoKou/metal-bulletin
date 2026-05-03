@@ -23,8 +23,8 @@ body {
 .muted { color: var(--text-mute); }
 .small { font-size: 10.5px; }
 
-/* Theme tokens — muted Bloomberg */
-.app {
+/* Theme tokens — muted Bloomberg (global so overlays can use them) */
+:root {
   --bg-0: #08090b;
   --bg-1: #0d0e11;
   --bg-2: #131419;
@@ -46,7 +46,9 @@ body {
   --accent: #c4a464;
   --accent-soft: rgba(196, 164, 100, 0.10);
   --slate: #5a6878;
+}
 
+.app {
   position: fixed; inset: 0;
   display: flex; flex-direction: column;
   background: var(--bg-0);
