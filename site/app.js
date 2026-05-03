@@ -531,13 +531,13 @@ async function init() {
     entries.forEach(e => {
       if (e.isIntersecting) {
         e.target.classList.add('is-entering');
-        if (e.intersectionRatio > 0.5) {
+        if (e.intersectionRatio > 0.6) {
           const m = e.target.dataset.metal;
-          nav.querySelectorAll('.nav-pill').forEach(b => b.classList.toggle('is-active', b.dataset.metal === m));
+          if (m) nav.querySelectorAll('.nav-pill').forEach(b => b.classList.toggle('is-active', b.dataset.metal === m));
         }
       }
     });
-  }, { root: scroller, threshold: [0, 0.5, 1] });
+  }, { root: scroller, threshold: [0, 0.6, 1] });
   sections.forEach(s => obs.observe(s));
 
   // Hero expand → chart overlay
@@ -551,8 +551,7 @@ async function init() {
     });
   });
 
-  // Pull-to-refresh
-  bindPTR(scroller, () => location.reload());
+  // PTR disabled in horizontal-swipe mode (would conflict with x-scroll)
 }
 
 init().catch(err => {

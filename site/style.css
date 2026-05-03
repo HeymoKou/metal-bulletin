@@ -156,24 +156,34 @@ body {
 .nav-pill.is-active .nav-pill__price { color: var(--text); }
 .nav-pill__pct { font-size: 9px; }
 
-/* Scroller */
+/* Scroller — horizontal swipe between metals */
 .app__scroller {
   flex: 1;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
   background: var(--bg-0);
   position: relative;
 }
 .metal-section {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  min-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px 12px 32px;
   display: flex; flex-direction: column; gap: 10px;
-  border-bottom: 1px dashed var(--border);
+  border-right: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
 }
+.metal-section::-webkit-scrollbar { width: 4px; }
+.metal-section::-webkit-scrollbar-track { background: transparent; }
+.metal-section::-webkit-scrollbar-thumb { background: var(--border-strong); }
 .metal-section.is-entering > * { animation: section-rise 0.4s ease both; }
 .metal-section.is-entering > *:nth-child(2) { animation-delay: 0.04s; }
 .metal-section.is-entering > *:nth-child(3) { animation-delay: 0.08s; }
@@ -340,12 +350,16 @@ body {
 .ptr--spin { color: var(--accent); animation: spin 1s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Footer */
+/* Footer — horizontal end panel */
 .app__footer {
-  padding: 24px 16px 36px;
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  padding: 80px 24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   font-size: 10px; color: var(--text-mute);
-  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 
 /* Expanded chart overlay */
