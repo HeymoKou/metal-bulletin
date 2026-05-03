@@ -21,15 +21,22 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     # KORES dead site, KOMIS JS-rendered, Nonferrous CI TCP timeout — 모두 default 제외
     scrapers = [RSSScraper(), GDELTScraper()]
+    per_source_counts: dict[str, int] = {}
     all_items = []
     for scraper in scrapers:
         items = scraper.fetch()
+        per_source_counts[scraper.name] = len(items)
         logger.info("scraper=%s fetched=%d", scraper.name, len(items))
         all_items.extend(items)
 
+    # Silent-fail guard: 모든 active scrapers가 0이면 outage. Exit non-zero → CI 알림.
+    # 단일 source 0은 격리된 실패로 정상 (RSS 1개 죽어도 다른 소스로 cover).
     if not all_items:
-        logger.warning("no items fetched")
-        return
+        logger.error(
+            "FRESHNESS FAIL: all %d scrapers returned 0 items. counts=%s",
+            len(scrapers), per_source_counts,
+        )
+        raise SystemExit(2)
 
     Path("data").mkdir(exist_ok=True)
     pending = Path("data/news_pending.json")

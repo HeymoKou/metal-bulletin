@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 SYSTEM_INSTRUCTION = """\
 당신은 비철금속 시장 뉴스 분석가다. 주어진 뉴스 헤드라인 배열을 분석해
-각 항목에 대해 JSON 객체를 반환하라. 출력은 JSON 배열만 포함하고 다른 설명 금지.
+각 항목에 대해 JSON 객체를 반환하라. 출력은 {"results": [...]} 형태의 JSON.
 
-각 객체:
-- id: 입력의 id 그대로 복사
+각 results[] 항목:
+- id: 입력의 id 그대로 복사 (필수)
 - summary_ko: 한국어 1문장 요약 (50자 이내)
 - metals: ["copper","aluminum","zinc","nickel","lead","tin"] 중 영향받는 광물 (없으면 [])
 - sentiment: -1 (가격 하락 압력), 0 (중립), 1 (가격 상승 압력)
@@ -41,7 +41,11 @@ def build_batch_prompt(items: list[RawNewsItem]) -> str:
 
 
 def parse_batch_response(items: list[RawNewsItem], raw_response: str) -> list[EnrichedNewsItem]:
-    """Parse LLM response. Missing items → enriched with null summary fields."""
+    """Parse LLM response. Missing items → enriched with null summary fields.
+
+    Accepts both bare array `[...]` (legacy/fallback) and wrapped `{"results": [...]}`
+    (structured output schema). Code-fence stripping kept for non-schema providers.
+    """
     enrichments: dict[str, dict] = {}
     try:
         cleaned = raw_response.strip()
@@ -50,6 +54,9 @@ def parse_batch_response(items: list[RawNewsItem], raw_response: str) -> list[En
             if cleaned.startswith("json"):
                 cleaned = cleaned[4:]
         parsed = json.loads(cleaned)
+        # Unwrap structured-output envelope.
+        if isinstance(parsed, dict) and "results" in parsed:
+            parsed = parsed["results"]
         if isinstance(parsed, list):
             for entry in parsed:
                 eid = entry.get("id")

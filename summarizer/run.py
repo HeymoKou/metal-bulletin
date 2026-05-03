@@ -35,7 +35,16 @@ def main() -> None:
 
     client = SummarizerClient(providers=providers, batch_size=10)
     enriched = client.summarize(items)
-    logger.info("summarized %d items", len(enriched))
+    null_count = sum(1 for e in enriched if e.summary_ko is None)
+    logger.info("summarized %d items (null=%d)", len(enriched), null_count)
+
+    # Silent-fail guard: items 5건 이상에서 100% null이면 LLM 전체 outage.
+    # 5건 미만은 정상 (입력 적음) — false positive 방지.
+    if len(enriched) >= 5 and null_count == len(enriched):
+        logger.error(
+            "FRESHNESS FAIL: all %d summarize attempts returned null (LLM outage)", len(enriched)
+        )
+        raise SystemExit(2)
 
     out = Path("data/news_enriched.json")
     out.write_text(
