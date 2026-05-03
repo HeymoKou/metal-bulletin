@@ -83,7 +83,7 @@ class GDELTScraper(NewsSource):
             title = a.get("title") or ""
             if not url or not title:
                 continue
-            lang = (a.get("language") or "en").lower()[:3]
+            lang = _normalize_lang(a.get("language"))
             published = self._parse_seendate(a.get("seendate"))
             items.append(RawNewsItem(
                 source=self.name,
@@ -97,11 +97,33 @@ class GDELTScraper(NewsSource):
         return items
 
     @staticmethod
-    def _parse_seendate(seen: str | None) -> datetime | None:
-        """GDELT seendate format: '20260504T093000Z'."""
-        if not seen:
-            return None
-        try:
-            return datetime.strptime(seen, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        except (ValueError, TypeError):
-            return None
+    def _parse_seendate(seen: str | None) -> datetime | None:  # noqa: D401
+        return _parse_seendate_impl(seen)
+
+
+def _normalize_lang(raw: str | None) -> str:
+    """GDELT returns 'English'/'Chinese'/etc. Normalize to ISO 639-1 2-letter."""
+    if not raw:
+        return "en"
+    code = raw.strip().lower()
+    return {
+        "english": "en", "eng": "en",
+        "chinese": "zh", "zho": "zh", "zh": "zh",
+        "korean": "ko", "kor": "ko",
+        "japanese": "ja", "jpn": "ja",
+        "spanish": "es", "spa": "es",
+        "german": "de", "deu": "de",
+        "french": "fr", "fra": "fr",
+        "russian": "ru", "rus": "ru",
+        "portuguese": "pt", "por": "pt",
+    }.get(code, code[:2])
+
+
+def _parse_seendate_impl(seen: str | None) -> datetime | None:
+    """GDELT seendate format: '20260504T093000Z'."""
+    if not seen:
+        return None
+    try:
+        return datetime.strptime(seen, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        return None

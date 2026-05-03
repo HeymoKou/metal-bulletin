@@ -37,7 +37,7 @@ def test_fetch_parses_articles(monkeypatch):
     assert len(items) == 2
     assert items[0].source == "gdelt"
     assert items[0].title == "Copper hits 5y high"
-    assert items[0].lang == "eng"
+    assert items[0].lang == "en"
     assert items[0].published_at is not None
 
 

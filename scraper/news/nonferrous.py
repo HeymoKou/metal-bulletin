@@ -36,8 +36,15 @@ class NonferrousScraper(NewsSource):
 
     def fetch(self) -> list[RawNewsItem]:
         url = urljoin(self.base_url, TREND_PATH)
+        # Realistic Chrome headers — Korean assoc site sensitive to non-browser UAs/IPs.
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Referer": self.base_url + "/",
+        }
         try:
-            r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=TIMEOUT)
+            r = requests.get(url, headers=headers, timeout=TIMEOUT)
             r.raise_for_status()
             return self._parse(r.text)
         except Exception as e:
