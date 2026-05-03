@@ -1,7 +1,8 @@
 // LME Non-Ferrous Desk — vanilla JS (serverless GitHub Pages)
 // Data: Apache Parquet via hyparquet (ESM, ~25KB, no WASM)
-import { parquetReadObjects } from 'https://cdn.jsdelivr.net/npm/hyparquet@1/+esm';
-import { compressors } from 'https://cdn.jsdelivr.net/npm/hyparquet-compressors@1/+esm';
+// Pinned exact versions to remove auto-upgrade supply-chain risk.
+import { parquetReadObjects } from 'https://cdn.jsdelivr.net/npm/hyparquet@1.25.6/+esm';
+import { compressors } from 'https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm';
 
 const DATA_BASE = '../data';
 
@@ -576,7 +577,11 @@ async function init() {
         e.target.classList.add('is-entering');
         if (e.intersectionRatio > 0.6) {
           const m = e.target.dataset.metal;
-          if (m) nav.querySelectorAll('.nav-pill').forEach(b => b.classList.toggle('is-active', b.dataset.metal === m));
+          if (m) {
+            nav.querySelectorAll('.nav-pill').forEach(b => b.classList.toggle('is-active', b.dataset.metal === m));
+            const activePill = nav.querySelector(`.nav-pill[data-metal="${m}"]`);
+            activePill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
         }
       }
     });
