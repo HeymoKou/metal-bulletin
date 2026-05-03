@@ -8,6 +8,8 @@ import json
 import logging
 from pathlib import Path
 
+from scraper.news.gdelt import GDELTScraper
+from scraper.news.nonferrous import NonferrousScraper
 from scraper.news.rss import RSSScraper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -15,8 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    # KoresScraper deferred — URL reverse engineering needed (Phase 1b)
-    scrapers = [RSSScraper()]
+    # KORES dead site (404 on root). KOMIS = JS-rendered (need Playwright).
+    # Both deferred until reverse engineering effort makes sense.
+    scrapers = [RSSScraper(), GDELTScraper(), NonferrousScraper()]
     all_items = []
     for scraper in scrapers:
         items = scraper.fetch()

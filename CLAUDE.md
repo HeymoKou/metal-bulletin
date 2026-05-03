@@ -26,8 +26,9 @@ PDF (NH선물) → daily JSON → Parquet (`data/series/{metal}/{year}.parquet` 
 - `pages.yml` — site/ + data/ → Pages. push 트리거.
 
 ## 뉴스 파이프라인
-PDF 가격과 독립. 4단계: scrape (RSS+KORES) → parse (dedupe+classify) → summarize (Gemini Flash batch) → build parquet.
-- 소스: mining.com, kitco, commodity-tv, hankyung, moneytoday (RSS) + KORES 일일자원뉴스 (스크랩)
+PDF 가격과 독립. 4단계: scrape → parse (dedupe+classify) → summarize (Gemini Flash batch) → build parquet.
+- 소스 (Phase 1a+1b): mining.com, moneytoday, snmnews 철강금속신문 (RSS) + GDELT 2.0 API (글로벌 다국어) + 한국비철금속협회 nonferrous.or.kr (산업트렌드 게시판 스크랩)
+- KORES/KOMIS deferred — 사이트 dead/JS-rendered, Playwright 필요
 - LLM provider 인터페이스 (`SummarizerProvider` Protocol) → 추후 groq/cerebras failover 확장 가능
 - 분류 1차 필터 (`parser/news/classify.py`) → 무관 헤드라인은 LLM 안 부름 (비용 절감)
 - 출력 스키마: `data/news/{year}.parquet` (date, source, url, url_hash, title, summary_ko, metals, sentiment, event_type, confidence, lang)
