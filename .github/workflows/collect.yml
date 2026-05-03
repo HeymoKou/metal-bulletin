@@ -2,7 +2,8 @@ name: Collect Daily Metal Data
 
 on:
   schedule:
-    - cron: '0 10 * * 1-5'  # UTC 10:00 = KST 19:00, weekdays
+    # KST 09:00 ~ 19:00 매시 (UTC 00 ~ 10), 평일
+    - cron: '0 0-10 * * 1-5'
   workflow_dispatch:
 
 permissions:
@@ -14,27 +15,63 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip if today already collected
+        id: gate
+        run: |
+          TODAY=$(TZ=Asia/Seoul date +%Y-%m-%d)
+          LATEST=$(python3 -c "import json; print(json.load(open('data/manifest.json'))['last_updated'])" 2>/dev/null || echo "")
+          echo "today=$TODAY, latest=$LATEST"
+          if [ "$LATEST" = "$TODAY" ]; then
+            echo "Today's data already collected; exiting early."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+        if: steps.gate.outputs.skip != 'true'
 
       - name: Install dependencies
+        if: steps.gate.outputs.skip != 'true'
         run: uv sync
 
+      - name: Restore daily/ from raw archive
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          # builder.load_dailies handles raw → daily; do it explicitly so scraper's
+          # existing_dates() check sees prior dates and only fetches new ones.
+          mkdir -p data/daily
+          uv run python -c "
+          from pathlib import Path
+          import json, pyarrow.parquet as pq
+          for f in sorted(Path('data/raw').glob('*.parquet')):
+              for row in pq.read_table(f).to_pylist():
+                  out = Path('data/daily') / f'{row[\"date\"]}.json'
+                  if not out.exists():
+                      out.write_text(row['json'])
+          print('restored', len(list(Path('data/daily').glob('*.json'))), 'daily entries')
+          "
+
       - name: Download latest PDF
+        if: steps.gate.outputs.skip != 'true'
         run: uv run python -m scraper.download --mode latest --data-dir data --tmp-dir tmp/pdfs
 
       - name: Parse PDF
+        if: steps.gate.outputs.skip != 'true'
         run: uv run python -m parser.parse --mode latest --data-dir data --tmp-dir tmp/pdfs
 
       - name: Fetch BOK exchange rates (optional)
-        if: ${{ env.BOK_API_KEY != '' }}
+        if: steps.gate.outputs.skip != 'true' && env.BOK_API_KEY != ''
         env:
           BOK_API_KEY: ${{ secrets.BOK_API_KEY }}
         run: uv run python -m exchange.fetch_krw --data-dir data
 
       - name: Build timeseries
+        if: steps.gate.outputs.skip != 'true'
         run: uv run python -m builder.build --data-dir data
 
       - name: Commit and push
+        if: steps.gate.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -42,6 +79,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "data: $(date +%Y-%m-%d) update"
+            git commit -m "data: $(TZ=Asia/Seoul date +%Y-%m-%d %H:%M) update"
             git push
           fi
