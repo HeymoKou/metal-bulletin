@@ -2,7 +2,7 @@ name: news
 
 on:
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '0 0,12 * * *'  # UTC 0/12 = KST 9/21시 — 영업/야간 cover, 일 2회
   workflow_dispatch: {}
 
 permissions:
@@ -18,10 +18,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5 (Node 24)
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+        uses: astral-sh/setup-uv@d0d8abe699bfb85fec6de9f7adb5ae17292296ff  # v6 (Node 24)
         with:
           enable-cache: true
 
