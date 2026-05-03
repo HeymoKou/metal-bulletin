@@ -268,6 +268,34 @@ def write_raw_archives(dailies: list[dict], raw_root: Path) -> list[int]:
 
 # ---------- Manifest ----------
 
+def _augment_manifest_with_news(manifest: dict, data_dir: Path) -> dict:
+    """Add news/events sections if files exist. Silent skip otherwise."""
+    news_dir = data_dir / "news"
+    if news_dir.exists():
+        years = sorted(int(p.stem) for p in news_dir.glob("*.parquet") if p.stem.isdigit())
+        if years:
+            try:
+                latest_file = news_dir / f"{years[-1]}.parquet"
+                table = pq.read_table(latest_file, columns=["fetched_at"])
+                last_updated = table.column("fetched_at").to_pylist()[-1] if table.num_rows else None
+                total = sum(pq.read_metadata(news_dir / f"{y}.parquet").num_rows for y in years)
+                manifest["news"] = {
+                    "available_years": years,
+                    "last_updated": last_updated.isoformat() if last_updated else None,
+                    "total_records": total,
+                }
+            except Exception as e:
+                print(f"manifest news augment failed: {e}")
+
+    events_dir = data_dir / "events"
+    if events_dir.exists():
+        years = sorted(int(p.stem) for p in events_dir.glob("*.parquet") if p.stem.isdigit())
+        if years:
+            manifest["events"] = {"available_years": years}
+
+    return manifest
+
+
 def build_manifest(dailies: list[dict], years_per_metal: dict[str, list[int]]) -> dict:
     dates = sorted(d["date"] for d in dailies)
     all_years = sorted({y for ys in years_per_metal.values() for y in ys})
@@ -387,6 +415,7 @@ def run(data_dir: Path):
 
     # Manifest
     manifest = build_manifest(dailies, years_per_metal)
+    manifest = _augment_manifest_with_news(manifest, data_dir)
     (data_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
     print(f"manifest: {manifest['total_days']} days, years {manifest['years']}")
 
