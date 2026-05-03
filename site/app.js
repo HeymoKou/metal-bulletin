@@ -385,8 +385,18 @@ function renderHeader(latestDate, krwRate, krwSrc) {
 }
 
 // --- Expanded chart overlay ---
-function openChart(label, series) {
-  const W = 360, H = 200, padL = 44, padR = 12, padT = 16, padB = 28;
+function openChart(label, series, opts = {}) {
+  const ccy = opts.ccy || '$';
+  const fmtCcy = (n, d) => (n == null || isNaN(n)) ? '—' : ccy + fmt(n, d);
+  const fmtCcySigned = (n, d) => {
+    if (n == null || isNaN(n)) return '—';
+    const s = ccy + fmt(Math.abs(n), d);
+    if (n > 0) return '+' + s;
+    if (n < 0) return '−' + s;
+    return s;
+  };
+
+  const W = 360, H = 200, padL = 56, padR = 12, padT = 16, padB = 28;
   if (!series || series.length < 2) return;
   const vals = series.map(p => p.v);
   const min = Math.min(...vals), max = Math.max(...vals);
@@ -419,8 +429,8 @@ function openChart(label, series) {
         <button class="chart-overlay__close" aria-label="close">✕</button>
       </div>
       <div class="chart-overlay__readout">
-        <div><div class="lbl"><span data-readout="date">${esc(cur.date)}</span></div><div class="val mono" data-readout="val">${fmt(cur.v)}</div></div>
-        <div><div class="lbl">변동 vs 시작 · vs start</div><div class="val mono ${dirClass(delta)}">${fmtSigned(delta)} <span class="muted">(${fmtSigned(deltaPct, 2)}%)</span></div></div>
+        <div><div class="lbl"><span data-readout="date">${esc(cur.date)}</span></div><div class="val mono" data-readout="val">${fmtCcy(cur.v)}</div></div>
+        <div><div class="lbl">변동 vs 시작 · vs start</div><div class="val mono ${dirClass(delta)}">${fmtCcySigned(delta)} <span class="muted">(${fmtSigned(deltaPct, 2)}%)</span></div></div>
       </div>
       <svg viewBox="0 0 ${W} ${H}" width="100%" height="200" style="touch-action:none">
         <defs><linearGradient id="exp-fill" x1="0" y1="0" x2="0" y2="1">
@@ -429,7 +439,7 @@ function openChart(label, series) {
         ${ticks.map((t, i) => {
           const y = padT + (H - padT - padB) * (i / (ticks.length - 1));
           return `<g><line x1="${padL}" x2="${W-padR}" y1="${y}" y2="${y}" stroke="var(--border)" stroke-dasharray="2 3"/>
-            <text x="${padL-6}" y="${y+3}" text-anchor="end" class="chart-tick">${fmt(t, t > 1000 ? 0 : 2)}</text></g>`;
+            <text x="${padL-6}" y="${y+3}" text-anchor="end" class="chart-tick">${ccy}${fmt(t, t > 1000 ? 0 : 2)}</text></g>`;
         }).join('')}
         <path d="${dArea}" fill="url(#exp-fill)"/>
         <path d="${dLine}" fill="none" stroke="${stroke}" stroke-width="1.5"/>
@@ -465,7 +475,7 @@ function openChart(label, series) {
     const p = series[best];
     const [px, py] = pts[best];
     readoutDate.textContent = p.date;
-    readoutVal.textContent = fmt(p.v);
+    readoutVal.textContent = fmtCcy(p.v);
     hoverGroup.style.display = '';
     hoverLine.setAttribute('x1', px);
     hoverLine.setAttribute('x2', px);
@@ -475,7 +485,7 @@ function openChart(label, series) {
   function onLeave() {
     hoverGroup.style.display = 'none';
     readoutDate.textContent = cur.date;
-    readoutVal.textContent = fmt(cur.v);
+    readoutVal.textContent = fmtCcy(cur.v);
   }
   svg.addEventListener('mousemove', onMove);
   svg.addEventListener('mouseleave', onLeave);
