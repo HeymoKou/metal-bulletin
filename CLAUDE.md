@@ -3,10 +3,11 @@
 서버리스 비철금속 데스크. 다음 세션이 빨리 따라잡기 위한 핵심만.
 
 ## 스택
-- Python 3.14 (uv) — scraper/parser/exchange/builder
+- Python 3.14 (uv) — scraper/parser/exchange/builder/summarizer
 - Apache Parquet (pyarrow, zstd) — 데이터 저장 포맷
 - Vanilla JS ESM + hyparquet (CDN, 정확 버전 핀) — 프론트
 - GitHub Pages + Actions
+- 뉴스 파이프라인: feedparser, beautifulsoup4, rapidfuzz, pydantic, google-genai (Gemini Flash), zstandard
 
 ## 데이터 플로우
 PDF (NH선물) → daily JSON → Parquet (`data/series/{metal}/{year}.parquet` + `latest.parquet`) → 프론트 fetch
@@ -21,10 +22,20 @@ PDF (NH선물) → daily JSON → Parquet (`data/series/{metal}/{year}.parquet` 
 
 ## 워크플로우
 - `collect.yml` — KST 평일 9~19시 매시. `manifest.last_updated == 오늘(KST)`이면 모든 step 스킵 (~5초 종료).
+- `news.yml` — 매 4시간 (UTC `0 */4 * * *`). 비철 뉴스 수집 → Gemini 요약 → `data/news/{year}.parquet`. `GEMINI_API_KEY` secret 필요.
 - `pages.yml` — site/ + data/ → Pages. push 트리거.
 
+## 뉴스 파이프라인
+PDF 가격과 독립. 4단계: scrape (RSS+KORES) → parse (dedupe+classify) → summarize (Gemini Flash batch) → build parquet.
+- 소스: mining.com, kitco, commodity-tv, hankyung, moneytoday (RSS) + KORES 일일자원뉴스 (스크랩)
+- LLM provider 인터페이스 (`SummarizerProvider` Protocol) → 추후 groq/cerebras failover 확장 가능
+- 분류 1차 필터 (`parser/news/classify.py`) → 무관 헤드라인은 LLM 안 부름 (비용 절감)
+- 출력 스키마: `data/news/{year}.parquet` (date, source, url, url_hash, title, summary_ko, metals, sentiment, event_type, confidence, lang)
+- raw 아카이브: `data/raw/news/{year-month}.jsonl.zst`
+
 ## 보안 핀 (변경 시 갱신 필요)
-- `astral-sh/setup-uv@<sha>` — collect.yml 라인 17
+- `astral-sh/setup-uv@<sha>` — collect.yml + news.yml (동일 SHA 유지)
+- `actions/checkout@v4` — collect.yml + news.yml
 - `hyparquet@1.25.6`, `hyparquet-compressors@1.1.1` — site/app.js 라인 4-5
 
 ## 파서 강건성 (히스토릭 PDF)
@@ -37,14 +48,22 @@ PDF (NH선물) → daily JSON → Parquet (`data/series/{metal}/{year}.parquet` 
 `builder.resolve_rate()`: BOK ECOS → PDF 내장 → None. 각 daily 엔트리 `krw.source` 추적.
 
 ## 테스트
-- `uv run pytest tests/` — 24 (Python)
+- `uv run pytest tests/` — 66+ (Python, 가격 24 + 뉴스 42)
 - `npm run smoke` — 6 (JS Parquet 로드 + 스키마)
 
 ## 자주 쓰는 커맨드
 ```bash
+# 가격 파이프라인
 uv run python -m scraper.download --mode latest
 uv run python -m parser.parse --mode latest
 uv run python -m builder.build
+
+# 뉴스 파이프라인 (GEMINI_API_KEY 필요)
+uv run python -m scraper.news.run
+uv run python -m parser.news.run
+uv run python -m summarizer.run
+uv run python -m builder.news_build
+
 gh run list --repo HeymoKou/metal-bulletin --limit 5
 ```
 
