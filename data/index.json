@@ -8,9 +8,66 @@
     "nickel",
     "tin"
   ],
+  "metal_info": {
+    "copper": {
+      "symbol": "Cu",
+      "unit": "$/ton"
+    },
+    "aluminum": {
+      "symbol": "Al",
+      "unit": "$/ton"
+    },
+    "zinc": {
+      "symbol": "Zn",
+      "unit": "$/ton"
+    },
+    "lead": {
+      "symbol": "Pb",
+      "unit": "$/ton"
+    },
+    "nickel": {
+      "symbol": "Ni",
+      "unit": "$/ton"
+    },
+    "tin": {
+      "symbol": "Sn",
+      "unit": "$/ton"
+    }
+  },
+  "years": [
+    2025,
+    2026
+  ],
+  "years_per_metal": {
+    "copper": [
+      2026,
+      2025
+    ],
+    "aluminum": [
+      2026,
+      2025
+    ],
+    "zinc": [
+      2026,
+      2025
+    ],
+    "lead": [
+      2026,
+      2025
+    ],
+    "nickel": [
+      2026,
+      2025
+    ],
+    "tin": [
+      2026,
+      2025
+    ]
+  },
   "total_days": 84,
   "date_range": {
     "from": "2025-12-24",
     "to": "2026-05-01"
-  }
+  },
+  "latest_window": 90
 }

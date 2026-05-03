@@ -26,8 +26,8 @@ const dirClass = (n) => (n == null || n === 0) ? 'flat' : (n > 0 ? 'up' : 'down'
 const arrow = (n) => (n == null || n === 0) ? '·' : (n > 0 ? '▲' : '▼');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-function priceSeries(data, key = 'close') {
-  return data.slice(0, 30).reverse().map(d => {
+function priceSeries(data, key = 'close', count = 30) {
+  return data.slice(0, count).reverse().map(d => {
     const lme = d.lme || {};
     const ref = lme['3m'] || lme.cash || {};
     return { date: d.date, v: ref[key] != null ? ref[key] : null };
@@ -497,14 +497,35 @@ function bindPTR(scroller, onRefresh) {
 }
 
 // --- App init ---
+const yearCache = {}; // {metal}__{year} → ts payload
+async function loadYear(metal, year) {
+  const key = `${metal}__${year}`;
+  if (yearCache[key]) return yearCache[key];
+  const r = await fetch(`${DATA_BASE}/metals/${metal}/${year}.json`).catch(() => null);
+  if (!r || !r.ok) return null;
+  const data = await r.json();
+  yearCache[key] = data;
+  return data;
+}
+
 async function loadAll() {
   const [index, ...metalsArr] = await Promise.all([
     fetch(`${DATA_BASE}/index.json`).then(r => r.json()).catch(() => null),
-    ...METAL_ORDER.map(m => fetch(`${DATA_BASE}/metals/${m}.json`).then(r => r.json()).catch(() => null)),
+    ...METAL_ORDER.map(m => fetch(`${DATA_BASE}/metals/${m}/latest.json`).then(r => r.json()).catch(() => null)),
   ]);
   const metals = {};
   METAL_ORDER.forEach((m, i) => metals[m] = metalsArr[i]);
   return { index, metals };
+}
+
+async function loadFullSeries(metal, index) {
+  // Concatenate all available years (newest-first) for this metal.
+  const years = (index?.years_per_metal?.[metal] || []).slice().sort((a, b) => b - a);
+  if (!years.length) return null;
+  const chunks = await Promise.all(years.map(y => loadYear(metal, y)));
+  const data = chunks.filter(Boolean).flatMap(c => c.data || []);
+  data.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return { metal, data, symbol: chunks[0]?.symbol, unit: chunks[0]?.unit };
 }
 
 async function init() {
@@ -562,14 +583,26 @@ async function init() {
   }, { root: scroller, threshold: [0, 0.6, 1] });
   sections.forEach(s => obs.observe(s));
 
-  // Hero expand → chart overlay
+  // Hero expand → chart overlay (lazy-load full history)
   app.querySelectorAll('[data-expand]').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', async () => {
       const m = el.dataset.expand;
-      const ts = metals[m];
-      if (!ts) return;
-      const series = priceSeries(ts.data, 'close');
-      openChart(`${METAL_NAMES_KO[m]} · ${METAL_SYMBOLS[m]} 3M`, series);
+      const latestTs = metals[m];
+      if (!latestTs) return;
+      // Show 30-day from latest first, then upgrade to full when loaded.
+      const quickSeries = priceSeries(latestTs.data, 'close');
+      const title = `${METAL_NAMES_KO[m]} · ${METAL_SYMBOLS[m]} 3M`;
+      openChart(title, quickSeries);
+      // Async upgrade to full timeseries (all years).
+      if (index?.years_per_metal?.[m]?.length > 1) {
+        const full = await loadFullSeries(m, index);
+        if (full && full.data.length > latestTs.data.length) {
+          const fullSeries = priceSeries(full.data, 'close', full.data.length);
+          // Reopen with full data.
+          document.querySelector('.chart-overlay')?.remove();
+          openChart(title + ' · 전체', fullSeries);
+        }
+      }
     });
   });
 

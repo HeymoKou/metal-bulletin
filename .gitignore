@@ -1,18 +1,33 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 *.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# Temp PDFs
+# Temp PDFs + scratch
 tmp/
 
 # OS
 .DS_Store
+Thumbs.db
 
 # IDE
 .idea/
 .vscode/
+*.swp
 
-# Samples (dev only)
+# Dev samples
 samples/
+
+# Logs
+*.log
+
+# Local env
+.env
+.env.local

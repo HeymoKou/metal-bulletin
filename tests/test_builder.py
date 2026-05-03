@@ -1,4 +1,4 @@
-from builder.build import build_metal_timeseries, build_index, resolve_rate
+from builder.build import build_metal_timeseries, build_index, resolve_rate, split_by_year, write_metal_files
 
 
 DAILY_SAMPLE = {
@@ -68,8 +68,49 @@ def test_build_metal_timeseries_pdf_fallback():
 
 def test_build_index():
     dates = ["2026-01-02", "2026-05-01"]
-    result = build_index(dates)
+    years_per_metal = {"copper": [2026], "aluminum": [2026]}
+    result = build_index(dates, years_per_metal)
     assert result["last_updated"] == "2026-05-01"
     assert result["total_days"] == 2
     assert result["date_range"]["from"] == "2026-01-02"
     assert result["date_range"]["to"] == "2026-05-01"
+    assert result["years"] == [2026]
+    assert result["years_per_metal"]["copper"] == [2026]
+    assert "metal_info" in result
+
+
+def test_split_by_year():
+    entries = [
+        {"date": "2026-05-01", "lme": {}},
+        {"date": "2025-12-30", "lme": {}},
+        {"date": "2025-01-02", "lme": {}},
+        {"date": "2024-06-15", "lme": {}},
+    ]
+    by_year = split_by_year(entries)
+    assert set(by_year.keys()) == {2024, 2025, 2026}
+    assert len(by_year[2025]) == 2
+    assert len(by_year[2026]) == 1
+
+
+def test_write_metal_files(tmp_path):
+    entries = [
+        {"date": "2026-05-01", "lme": {"3m": {"close": 12974.5}}},
+        {"date": "2025-12-30", "lme": {"3m": {"close": 12000}}},
+    ]
+    years = write_metal_files("copper", entries, tmp_path)
+    assert years == [2026, 2025]
+    assert (tmp_path / "copper" / "latest.json").exists()
+    assert (tmp_path / "copper" / "2026.json").exists()
+    assert (tmp_path / "copper" / "2025.json").exists()
+
+    import json as _json
+    latest = _json.loads((tmp_path / "copper" / "latest.json").read_text())
+    assert latest["metal"] == "copper"
+    assert latest["symbol"] == "Cu"
+    assert latest["window_days"] == 90
+    assert len(latest["data"]) == 2
+    assert latest["data"][0]["date"] == "2026-05-01"
+
+    y2026 = _json.loads((tmp_path / "copper" / "2026.json").read_text())
+    assert y2026["year"] == 2026
+    assert len(y2026["data"]) == 1
