@@ -148,3 +148,28 @@ def test_parse_market_factors():
     result = parse_market_factors(SAMPLE_MARKET_FACTORS)
     assert result["krw_usd"] == 1471.94
     assert result["sp500"] == 7240.58
+
+
+from parser.page3 import parse_precious_metals
+
+
+SAMPLE_PRECIOUS = [
+    ['SPOT LBMA / LPPM', None, None, None, None, None],
+    ['', '현재가\n고가 저가', None, None, 'Price(구 London Fix)', None],
+    ['', '(ASK)', None, None, 'AM PM', None],
+    [None, '4642.23', '4660.07', '4560.40', '', None],
+    [None, '76.180', '76.948', '73.018', '', None],
+    [None, '2009.15', '2016.85', '1961.05', '1963.00', '1990.00'],
+    [None, '1542.95', '1557.88', '1513.33', '1515.00', '1529.00'],
+]
+
+
+def test_parse_precious_metals():
+    result = parse_precious_metals(SAMPLE_PRECIOUS)
+    assert result["gold"]["spot"] == 4642.23
+    assert result["gold"]["high"] == 4660.07
+    assert result["gold"]["low"] == 4560.40
+    assert result["silver"]["spot"] == 76.180
+    assert result["platinum"]["spot"] == 2009.15
+    assert result["platinum"]["am_fix"] == 1963.00
+    assert result["palladium"]["pm_fix"] == 1529.00
