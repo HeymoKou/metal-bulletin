@@ -1,0 +1,58 @@
+name: news
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: news
+  cancel-in-progress: false
+
+jobs:
+  collect-news:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@e58605a9b6da7c637471fab8847a5e5a6b8df081 # v5
+        with:
+          enable-cache: true
+
+      - name: Install deps
+        run: uv sync --frozen
+
+      - name: Scrape news
+        run: uv run python -m scraper.news.run
+
+      - name: Parse + classify
+        run: uv run python -m parser.news.run
+
+      - name: Summarize (LLM)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: uv run python -m summarizer.run
+
+      - name: Build parquet
+        run: uv run python -m builder.news_build
+
+      - name: Cleanup intermediate files
+        run: rm -f data/news_pending.json data/news_enriched.json
+
+      - name: Commit + push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/news data/raw/news data/manifest.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "no changes"
+          else
+            git commit -m "news: $(date -u +%Y-%m-%dT%H:%MZ)"
+            git push
+          fi
