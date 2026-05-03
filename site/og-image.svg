@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0d0e11"/>
+      <stop offset="100%" stop-color="#08090b"/>
+    </linearGradient>
+    <style>
+      .mono { font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace; }
+      .sans { font-family: 'Pretendard', 'IBM Plex Sans', system-ui, sans-serif; }
+    </style>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="0" y="0" width="6" height="630" fill="#c4a464"/>
+
+  <text x="80" y="160" class="mono" font-size="40" font-weight="700" letter-spacing="0.08em" fill="#d8dadf">LME</text>
+  <rect x="64" y="115" width="160" height="64" fill="none" stroke="#2e313a" stroke-width="2"/>
+
+  <text x="80" y="280" class="sans" font-size="76" font-weight="600" fill="#d8dadf" letter-spacing="-0.02em">비철금속 데스크</text>
+  <text x="80" y="332" class="sans" font-size="32" font-weight="500" fill="#a8abb3" letter-spacing="0.02em">Non-Ferrous Desk · LME · SHFE · BOK</text>
+
+  <g transform="translate(80, 410)" class="mono" font-size="22" font-weight="500">
+    <text x="0" y="0" fill="#c4a464">Cu</text>
+    <text x="100" y="0" fill="#c4a464">Al</text>
+    <text x="200" y="0" fill="#c4a464">Zn</text>
+    <text x="300" y="0" fill="#c4a464">Ni</text>
+    <text x="400" y="0" fill="#c4a464">Pb</text>
+    <text x="500" y="0" fill="#c4a464">Sn</text>
+    <text x="0" y="32" fill="#6a6d75" font-size="14">전기동</text>
+    <text x="100" y="32" fill="#6a6d75" font-size="14">알루미늄</text>
+    <text x="200" y="32" fill="#6a6d75" font-size="14">아연</text>
+    <text x="300" y="32" fill="#6a6d75" font-size="14">니켈</text>
+    <text x="400" y="32" fill="#6a6d75" font-size="14">납</text>
+    <text x="500" y="32" fill="#6a6d75" font-size="14">주석</text>
+  </g>
+
+  <g class="mono" font-size="14" fill="#6a6d75" letter-spacing="0.04em">
+    <text x="80" y="555">10년 시계열 · 일일 자동 갱신 · Apache Parquet</text>
+    <text x="80" y="582">DAILY · LME · SHFE · KRW · INVENTORY · SETTLEMENT</text>
+  </g>
+
+  <g transform="translate(900, 240)" stroke="#8fb573" stroke-width="2" fill="none" opacity="0.85">
+    <path d="M 0 100 L 30 90 L 60 95 L 90 70 L 120 75 L 150 50 L 180 60 L 210 30 L 240 35 L 270 10"/>
+    <circle cx="270" cy="10" r="4" fill="#8fb573"/>
+  </g>
+</svg>
