@@ -36,11 +36,32 @@ def parse_pdf(pdf_path: Path) -> dict:
     ev_metals = parse_ev_metals(p1_tables[2])
 
     p2_tables = pdf.pages[1].extract_tables()
-    if len(p2_tables) < 7:
-        raise ValueError(f"Page 2: expected 7+ tables, got {len(p2_tables)}")
+    if len(p2_tables) < 6:
+        raise ValueError(f"Page 2: expected 6+ tables, got {len(p2_tables)}")
     inventory = parse_inventory(p2_tables[0])
-    shfe = parse_shfe_spread(p2_tables[5])
-    market = parse_market_factors(p2_tables[6])
+
+    shfe_idx = None
+    market_idx = None
+    for idx, t in enumerate(p2_tables):
+        header = str(t[0][0]) if t and t[0] else ""
+        if "SHFE" in header and "LME" in header:
+            shfe_idx = idx
+        if shfe_idx is not None and idx == shfe_idx + 1:
+            market_idx = idx
+
+    if shfe_idx is None:
+        for idx, t in enumerate(p2_tables):
+            if len(t) >= 7 and len(t[0]) >= 10:
+                cell = str(t[0][0]) if t[0][0] else ""
+                if "CNY" in cell or "증치세" in cell:
+                    shfe_idx = idx
+                    break
+
+    if shfe_idx is None:
+        raise ValueError("Page 2: SHFE spread table not found")
+
+    shfe = parse_shfe_spread(p2_tables[shfe_idx])
+    market = parse_market_factors(p2_tables[market_idx]) if market_idx and market_idx < len(p2_tables) else {}
 
     p3_tables = pdf.pages[2].extract_tables()
     if len(p3_tables) < 1:

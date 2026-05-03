@@ -2,7 +2,7 @@ METALS_ORDER = ["copper", "aluminum", "zinc", "lead", "nickel", "tin"]
 
 
 def _num(val: str | None) -> float | None:
-    if val is None or val.strip() == "" or val.strip() == "#N/A":
+    if val is None or val.strip() == "" or "#N/A" in val:
         return None
     return float(val.replace(",", ""))
 
