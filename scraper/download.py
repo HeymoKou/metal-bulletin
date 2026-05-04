@@ -75,6 +75,9 @@ def run(mode: str, data_dir: Path, tmp_dir: Path, max_pages: int = 7):
     session = create_session()
     done = existing_dates(data_dir)
     downloaded = []
+    # Pre-create tmp_dir so manifest.json write at end succeeds even when 0 PDFs
+    # are downloaded (weekend/holiday/already-collected → empty list).
+    tmp_dir.mkdir(parents=True, exist_ok=True)
 
     pages = range(1, 2) if mode == "latest" else range(1, max_pages + 1)
     for page_num in pages:
