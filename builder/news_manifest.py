@@ -33,7 +33,8 @@ def update_manifest(data_dir: Path = Path("data")) -> None:
             try:
                 latest_file = news_dir / f"{years[-1]}.parquet"
                 table = pq.read_table(latest_file, columns=["fetched_at"])
-                last_updated = table.column("fetched_at").to_pylist()[-1] if table.num_rows else None
+                # max(), not last row — dedupe sort 이후 마지막 row가 oldest일 수 있음.
+                last_updated = max(table.column("fetched_at").to_pylist()) if table.num_rows else None
                 total = sum(pq.read_metadata(news_dir / f"{y}.parquet").num_rows for y in years)
                 manifest["news"] = {
                     "available_years": years,
