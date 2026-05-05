@@ -37,7 +37,7 @@ def reclassify_year(path: Path, dry_run: bool = False) -> tuple[int, int, int]:
             url=r.get("url") or "",
             title=r.get("title") or "",
             snippet=r.get("summary_ko") or "",
-            published=None,
+            published_at=None,
             fetched_at=datetime.now(timezone.utc),
             lang=r.get("lang") or "en",
         )

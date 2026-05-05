@@ -38,9 +38,8 @@ jobs:
         run: |
           # Pages serves at /<repo>/ — site source uses '../data' (works when site/ is a subdir).
           # In the bundled root layout, JS sits at /, data at /data → flip to './data'.
-          for f in _site/app.js _site/news.js; do
-            [ -f "$f" ] && sed -i "s|const DATA_BASE = '../data';|const DATA_BASE = './data';|" "$f"
-          done
+          # Single source: site/config.js exports DATA_BASE — patch only this one file.
+          sed -i "s|export const DATA_BASE = '../data';|export const DATA_BASE = './data';|" _site/config.js
 
       - uses: actions/configure-pages@v5
 

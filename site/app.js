@@ -9,8 +9,7 @@ import {
   renderBell, renderDrawer, renderTweaksGear, renderTweaksPanel,
   bindDrawer, bindTweaks, newsConstants,
 } from './news.js';
-
-const DATA_BASE = '../data';
+import { DATA_BASE } from './config.js';
 
 // Metal metadata is sourced from data/manifest.json (single source of truth).
 // These are populated in init() after manifest loads; modules use them via closures.
@@ -536,7 +535,7 @@ function openChart(label, series, opts = {}) {
   };
 
   const W = 360, H = 200, padL = 56, padR = 12, padT = 16, padB = 28;
-  if (!series || series.length < 2) return;
+  if (!series || series.length < 2) return null;
   const vals = series.map(p => p.v);
   const min = Math.min(...vals), max = Math.max(...vals);
   const range = max - min || 1;
@@ -690,6 +689,7 @@ function openChart(label, series, opts = {}) {
   }
 
   document.body.appendChild(overlay);
+  return overlay;
 }
 
 // --- Loaders ---
@@ -847,7 +847,7 @@ async function init() {
       bindDrawer(app, () => { markSeen(); refreshBell(); });
     } else if (!newTweaks.showNews && app.querySelector('#news-drawer')) {
       app.querySelector('#news-drawer')?.remove();
-      app.querySelector('#news-drawer__backdrop')?.remove();
+      app.querySelector('#news-drawer-backdrop')?.remove();
     } else {
       rerenderDrawer();
     }
@@ -882,25 +882,31 @@ async function init() {
   sections.forEach(s => obs.observe(s));
 
   // Hero expand → chart overlay with markers (LME 6종)
+  // Request token: each click owns a unique overlay; async load only swaps if its own overlay is still mounted.
+  let chartReqId = 0;
   app.querySelectorAll('[data-expand]').forEach(el => {
     el.addEventListener('click', async () => {
       const m = el.dataset.expand;
       const latestData = metals[m]?.data;
       if (!latestData?.length) return;
+      const reqId = ++chartReqId;
       const quickSeries = priceSeries(latestData, 'close');
       const title = `${METALS[m].name_ko} · ${METALS[m].symbol} 3M`;
       const dates = quickSeries.map(p => p.date);
       const markers = chartMarkersFor(m, dates, news, events, tweaks);
-      openChart(title, quickSeries, { markers });
+      const overlay = openChart(title, quickSeries, { markers });
+      if (overlay) overlay.dataset.reqId = String(reqId);
       const years = manifest?.metals?.[m]?.years || [];
       if (years.length > 1) {
         const full = await loadFullSeries(m, manifest);
-        if (full.length > latestData.length) {
+        const cur = document.querySelector('.chart-overlay');
+        if (full.length > latestData.length && cur && cur.dataset.reqId === String(reqId)) {
           const fullSeries = priceSeries(full, 'close', full.length);
           const fullDates = fullSeries.map(p => p.date);
           const fullMarkers = chartMarkersFor(m, fullDates, news, events, tweaks);
-          document.querySelector('.chart-overlay')?.remove();
-          openChart(title + ' · 전체', fullSeries, { markers: fullMarkers });
+          cur.remove();
+          const next = openChart(title + ' · 전체', fullSeries, { markers: fullMarkers });
+          if (next) next.dataset.reqId = String(reqId);
         }
       }
     });

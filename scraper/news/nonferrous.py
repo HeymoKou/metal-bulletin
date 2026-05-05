@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import html as html_lib
 import logging
 import re
 from datetime import datetime, timezone
@@ -77,7 +78,8 @@ class NonferrousScraper(NewsSource):
                     continue
                 seen_seqs.add(seq)
 
-            cleaned_title = title.strip().replace("&nbsp;", " ")
+            cleaned_title = html_lib.unescape(title).strip()
+            cleaned_title = re.sub(r"\s+", " ", cleaned_title)
             if not cleaned_title:
                 continue
             items.append(RawNewsItem(

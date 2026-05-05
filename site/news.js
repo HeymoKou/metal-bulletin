@@ -2,8 +2,7 @@
 // Reads data/news/{year}.parquet, data/events/{year}.parquet via hyparquet.
 import { parquetReadObjects } from 'https://cdn.jsdelivr.net/npm/hyparquet@1.25.6/+esm';
 import { compressors } from 'https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm';
-
-const DATA_BASE = '../data';
+import { DATA_BASE } from './config.js';
 
 const TWEAKS_KEY = 'desk.tweaks';
 const SEEN_KEY = 'desk.lastSeenAt';
