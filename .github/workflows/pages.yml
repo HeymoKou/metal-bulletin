@@ -36,9 +36,11 @@ jobs:
 
       - name: Patch DATA_BASE for Pages root
         run: |
-          # Pages serves at /<repo>/ — site/app.js fetches '../data' which works when site/ is a subdir.
-          # In the bundled root layout, app.js sits at /, data at /data → change DATA_BASE to './data'.
-          sed -i "s|const DATA_BASE = '../data';|const DATA_BASE = './data';|" _site/app.js
+          # Pages serves at /<repo>/ — site source uses '../data' (works when site/ is a subdir).
+          # In the bundled root layout, JS sits at /, data at /data → flip to './data'.
+          for f in _site/app.js _site/news.js; do
+            [ -f "$f" ] && sed -i "s|const DATA_BASE = '../data';|const DATA_BASE = './data';|" "$f"
+          done
 
       - uses: actions/configure-pages@v5
 
