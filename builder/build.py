@@ -232,11 +232,19 @@ def write_metal_series(metal: str, rows: list[dict], series_root: Path) -> list[
 
 # ---------- Exchange writer ----------
 
-def write_exchange(rates_map: dict[str, float], path: Path):
-    rows = sorted(rates_map.items(), key=lambda x: x[0])
+def write_exchange(rates_map: dict[str, float], path: Path,
+                   eur_map: dict[str, float] | None = None,
+                   cny_map: dict[str, float] | None = None):
+    """exchange.parquet: date, rate(=USD, 호환), usd, eur, cny."""
+    eur_map = eur_map or {}
+    cny_map = cny_map or {}
+    all_dates = sorted(set(rates_map) | set(eur_map) | set(cny_map))
     table = pa.table({
-        "date": [d for d, _ in rows],
-        "rate": [float(r) for _, r in rows],
+        "date": all_dates,
+        "rate": [float(rates_map[d]) if d in rates_map else None for d in all_dates],
+        "usd":  [float(rates_map[d]) if d in rates_map else None for d in all_dates],
+        "eur":  [float(eur_map[d])   if d in eur_map   else None for d in all_dates],
+        "cny":  [float(cny_map[d])   if d in cny_map   else None for d in all_dates],
     })
     write_parquet(table, path)
 
@@ -377,12 +385,21 @@ def run(data_dir: Path):
         print("No daily data found")
         return
 
-    # Load BOK rates (optional)
+    # Load BOK rates (optional). 신 스키마: currencies.{USD,EUR,CNY}.rates / 구: rates[]
     rates_map: dict[str, float] = {}
-    bok_path = data_dir / "exchange.bok.json"  # new compat path (optional)
+    eur_map: dict[str, float] = {}
+    cny_map: dict[str, float] = {}
+    bok_path = data_dir / "exchange.bok.json"
     legacy_bok_path = data_dir / "exchange" / "usd_krw.json"
     if bok_path.exists():
-        rates_map.update({r["date"]: r["rate"] for r in json.loads(bok_path.read_text()).get("rates", [])})
+        doc = json.loads(bok_path.read_text())
+        currencies = doc.get("currencies", {})
+        if currencies:
+            rates_map.update({r["date"]: r["rate"] for r in currencies.get("USD", {}).get("rates", [])})
+            eur_map.update({r["date"]: r["rate"] for r in currencies.get("EUR", {}).get("rates", [])})
+            cny_map.update({r["date"]: r["rate"] for r in currencies.get("CNY", {}).get("rates", [])})
+        else:
+            rates_map.update({r["date"]: r["rate"] for r in doc.get("rates", [])})
     elif legacy_bok_path.exists():
         rates_map.update({r["date"]: r["rate"] for r in json.loads(legacy_bok_path.read_text()).get("rates", [])})
 
@@ -405,9 +422,9 @@ def run(data_dir: Path):
         years_per_metal[metal] = years
         print(f"series: {metal} ({len(rows)} rows, years {years[-1] if years else '-'}~{years[0] if years else '-'})")
 
-    # Exchange parquet
-    write_exchange(resolved_rates, data_dir / "exchange.parquet")
-    print(f"exchange: {len(resolved_rates)} rates")
+    # Exchange parquet (USD + EUR + CNY)
+    write_exchange(resolved_rates, data_dir / "exchange.parquet", eur_map, cny_map)
+    print(f"exchange: USD={len(resolved_rates)}, EUR={len(eur_map)}, CNY={len(cny_map)}")
 
     # Raw archive
     raw_years = write_raw_archives(dailies, data_dir / "raw")
