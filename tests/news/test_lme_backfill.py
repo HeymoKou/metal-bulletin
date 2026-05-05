@@ -124,8 +124,13 @@ def test_validate_skips_synth(tmp_path: Path, monkeypatch):
 def test_fallback_writes_when_missing(tmp_path: Path, monkeypatch):
     daily = tmp_path / "daily"
     today = date(2026, 5, 4)
+    yesterday = date(2026, 5, 1)
+    # New trading: 5/4 differs from 5/1
     histories = {
-        m: [_wm(today, m, 1000.0 + i, 1010.0 + i, 100 + i)]
+        m: [
+            _wm(today, m, 1100.0 + i, 1110.0 + i, 200 + i),
+            _wm(yesterday, m, 1000.0 + i, 1010.0 + i, 100 + i),
+        ]
         for i, m in enumerate(["copper", "aluminum", "zinc", "nickel", "lead", "tin"])
     }
     monkeypatch.setattr("builder.lme_backfill._load_all_histories", lambda: histories)
@@ -135,6 +140,25 @@ def test_fallback_writes_when_missing(tmp_path: Path, monkeypatch):
     assert out.exists()
     j = json.loads(out.read_text())
     assert j["_source"] == "westmetall"
+
+
+def test_fallback_skips_lme_holiday_carry_over(tmp_path: Path, monkeypatch):
+    """5/4 row identical to 5/1 row → LME holiday → skip, keep 5/1 as latest."""
+    daily = tmp_path / "daily"
+    today = date(2026, 5, 4)
+    yesterday = date(2026, 5, 1)
+    # Identical values across days = LME holiday
+    histories = {
+        m: [
+            _wm(today, m, 1000.0 + i, 1010.0 + i, 100 + i),
+            _wm(yesterday, m, 1000.0 + i, 1010.0 + i, 100 + i),
+        ]
+        for i, m in enumerate(["copper", "aluminum", "zinc", "nickel", "lead", "tin"])
+    }
+    monkeypatch.setattr("builder.lme_backfill._load_all_histories", lambda: histories)
+    used = fallback_today(today=today, daily_dir=daily)
+    assert used is False
+    assert not (daily / "2026-05-04.json").exists()
 
 
 def test_fallback_skips_when_nh_present(tmp_path: Path, monkeypatch):

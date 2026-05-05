@@ -85,7 +85,10 @@ def _by_date(histories: dict[str, list[LMEDailyPrice]]) -> dict[date, dict[str, 
 
 
 def backfill(daily_dir: Path = DAILY_DIR) -> int:
-    """Write synthetic JSONs for dates missing NH data. Returns count written."""
+    """Write synthetic JSONs for dates missing NH data. Returns count written.
+
+    Skips LME holiday carry-overs (rows identical to prior trading day).
+    """
     daily_dir.mkdir(parents=True, exist_ok=True)
     existing: set[date] = {
         date.fromisoformat(p.stem) for p in daily_dir.glob("*.json")
@@ -94,12 +97,17 @@ def backfill(daily_dir: Path = DAILY_DIR) -> int:
 
     histories = _load_all_histories()
     by_date = _by_date(histories)
+    all_rows = [r for rows in histories.values() for r in rows]
     written = 0
+    skipped_holiday = 0
     for d, per_metal in sorted(by_date.items()):
         if d in existing:
             continue
         if len(per_metal) < 6:
             logger.debug("skip %s — only %d metals available (need 6)", d, len(per_metal))
+            continue
+        if _is_carry_over(per_metal, all_rows):
+            skipped_holiday += 1
             continue
         out_path = daily_dir / f"{d.isoformat()}.json"
         out_path.write_text(
@@ -107,7 +115,8 @@ def backfill(daily_dir: Path = DAILY_DIR) -> int:
             encoding="utf-8",
         )
         written += 1
-    logger.info("backfill: wrote %d synthetic daily JSONs", written)
+    logger.info("backfill: wrote %d synthetic JSONs, skipped %d LME holidays",
+                written, skipped_holiday)
     return written
 
 
@@ -162,8 +171,46 @@ def validate(daily_dir: Path = DAILY_DIR, max_dates: int | None = None) -> dict:
     return summary
 
 
+def _is_carry_over(today_row: dict, history: list) -> bool:
+    """Detect LME holiday: today's row identical to most recent prior trading day.
+
+    westmetall publishes every weekday; on LME bank holidays it carries forward
+    the prior day's values verbatim. Same (cash, 3m, stock) across consecutive
+    rows → no real trading occurred → don't pollute fallback with stale data.
+    """
+    if len(today_row) < 6:
+        return False
+    today_date = next(iter(today_row.values())).date
+    sorted_history = sorted(history, key=lambda p: p.date, reverse=True)
+    prior_dates = [p.date for p in sorted_history if p.date < today_date]
+    if not prior_dates:
+        return False
+    prior = max(prior_dates)
+    # Compare per-metal: all 6 must match exactly to be a carry-over.
+    matched = 0
+    for metal, p_today in today_row.items():
+        prior_for_metal = next(
+            (p for p in sorted_history if p.metal == metal and p.date == prior),
+            None,
+        )
+        if not prior_for_metal:
+            return False
+        if (
+            p_today.sett_cash == prior_for_metal.sett_cash
+            and p_today.sett_3m == prior_for_metal.sett_3m
+            and p_today.inv_current == prior_for_metal.inv_current
+        ):
+            matched += 1
+    return matched == len(today_row)
+
+
 def fallback_today(today: date | None = None, daily_dir: Path = DAILY_DIR) -> bool:
-    """If today's NH JSON missing, write westmetall synth. Return True if fallback used."""
+    """If today's NH JSON missing, write westmetall synth. Return True if fallback used.
+
+    Skips when westmetall row is a carry-over of prior trading day (LME holiday).
+    In that case the prior day's NH JSON is the right data to keep displayed —
+    writing a synth entry would replace rich OHLC/SHFE/etc. with null fields.
+    """
     today = today or date.today()
     target = daily_dir / f"{today.isoformat()}.json"
     if target.exists():
@@ -175,6 +222,11 @@ def fallback_today(today: date | None = None, daily_dir: Path = DAILY_DIR) -> bo
     if not per_metal or len(per_metal) < 6:
         logger.warning("fallback: westmetall has no/partial data for %s (got %d)",
                        today, len(per_metal or {}))
+        return False
+    # Flatten histories list for carry-over check
+    all_rows = [r for rows in histories.values() for r in rows]
+    if _is_carry_over(per_metal, all_rows):
+        logger.info("fallback skip: %s is LME holiday carry-over (no new trading)", today)
         return False
     daily_dir.mkdir(parents=True, exist_ok=True)
     target.write_text(
