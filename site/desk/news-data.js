@@ -213,9 +213,7 @@ const METAL_KO = {
 };
 
 // "Now" anchor — used by relative-time formatting and "is new" checks.
-// Pinned to dataset latest+ a few hours so the demo always shows fresh-looking
-// timestamps. Real-world: replace with new Date().
-const DATA_NOW = new Date('2026-05-05T10:00:00Z');
+const DATA_NOW = new Date();
 
 function timeAgo(iso, now){
   const t = new Date(iso).getTime();
