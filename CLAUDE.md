@@ -10,10 +10,17 @@
 - 뉴스 파이프라인: feedparser, beautifulsoup4, rapidfuzz, pydantic, google-genai (Gemini Flash)
 
 ## 데이터 플로우
-PDF (NH선물) → daily JSON → Parquet (`data/series/{metal}/{year}.parquet` + `latest.parquet`) → 프론트 fetch
+PDF (NH선물) **OR** westmetall.com → daily JSON → Parquet (`data/series/{metal}/{year}.parquet` + `latest.parquet`) → 프론트 fetch
 - `data/manifest.json` = 단일 메타 소스 (광물 정보, 가용 연도, 마지막 갱신)
-- `data/raw/{year}.parquet` = daily JSON 아카이브 (재구축 입력)
+- `data/raw/{year}.parquet` = daily JSON 아카이브 (재구축 입력), 2008~ 18년 시계열
 - `data/daily/` = 빌드 캐시, **gitignored**, raw에서 복원 가능 (`builder.load_dailies()`)
+
+## LME 가격 출처 이중화
+- **Primary**: NH선물 PDF — full schema (lme cash/3m OHLC, bid/ask, OI, settlement, forwards, monthly_avg, inventory breakdown, SHFE)
+- **Fallback**: westmetall.com — minimal (settlement.cash, settlement.3m, inventory.current). KR 공휴일에 NH 미발행 시 자동 적용.
+- **Cross-validation**: westmetall과 NH PDF 90일 비교 결과 6 metals × 3 columns Δ=0.00 (완전 일치). LME 공식 동일 출처.
+- 합성 JSON은 `_source: "westmetall"` 플래그 — FE에서 일부 필드 null 처리 필요.
+- 명령어: `uv run python -m builder.lme_backfill --mode {backfill|validate|fallback}`
 
 ## 광물 메타 단일 소스
 `builder.METALS` 딕셔너리 (build.py:11) → `data/manifest.json`에 직렬화 → 프론트는 manifest만 읽음.

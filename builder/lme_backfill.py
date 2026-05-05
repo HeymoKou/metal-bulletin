@@ -197,6 +197,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", choices=["backfill", "validate", "fallback"], required=True)
     ap.add_argument("--max-dates", type=int, default=None, help="validate: cap dates checked")
+    ap.add_argument("--date", type=str, default=None, help="fallback: explicit KST date YYYY-MM-DD")
     ap.add_argument("--daily-dir", type=Path, default=DAILY_DIR)
     args = ap.parse_args()
 
@@ -206,7 +207,8 @@ def main():
         result = validate(args.daily_dir, max_dates=args.max_dates)
         print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
     elif args.mode == "fallback":
-        fallback_today(daily_dir=args.daily_dir)
+        target_date = date.fromisoformat(args.date) if args.date else None
+        fallback_today(today=target_date, daily_dir=args.daily_dir)
 
 
 if __name__ == "__main__":

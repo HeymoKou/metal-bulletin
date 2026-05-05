@@ -60,6 +60,12 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         run: uv run python -m parser.parse --mode latest --data-dir data --tmp-dir tmp/pdfs
 
+      - name: LME fallback via westmetall (when NH PDF missing — KR holiday cover)
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          KST_TODAY=$(TZ=Asia/Seoul date +%Y-%m-%d)
+          uv run python -m builder.lme_backfill --mode fallback --date "$KST_TODAY"
+
       - name: Fetch BOK ECOS exchange rates
         if: steps.gate.outputs.skip != 'true'
         env:
