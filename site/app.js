@@ -3,13 +3,21 @@
 // Pinned exact versions to remove auto-upgrade supply-chain risk.
 import { parquetReadObjects } from 'https://cdn.jsdelivr.net/npm/hyparquet@1.25.6/+esm';
 import { compressors } from 'https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm';
+import {
+  loadNews, loadEvents, loadTweaks, saveTweaks, lastSeenAt, markSeen,
+  unseenCount, chartMarkersFor,
+  renderBell, renderDrawer, renderTweaksGear, renderTweaksPanel,
+  bindDrawer, bindTweaks, newsConstants,
+} from './news.js';
 
 const DATA_BASE = '../data';
 
 // Metal metadata is sourced from data/manifest.json (single source of truth).
 // These are populated in init() after manifest loads; modules use them via closures.
-let METALS = {};       // { copper: { symbol, unit, name_ko, name_en, years }, ... }
+let METALS = {};       // LME 6종 { copper: { symbol, unit, name_ko, name_en, years }, ... }
 let METAL_ORDER = [];  // canonical render order
+let MINOR_METALS = {}; // 비철 LME 비상장 minor (Sb 등) — schema=minor_regional
+let MINOR_ORDER = [];
 
 // hyparquet returns BigInt for int64 columns — coerce to Number for JS math.
 const num = (v) => v == null ? null : (typeof v === 'bigint' ? Number(v) : v);
@@ -341,8 +349,116 @@ function renderMetalSection(metal, ts) {
   </section>`;
 }
 
-function renderNav(metals) {
-  return METAL_ORDER.map(m => {
+// --- Minor metal (Sb 등) — LME 비상장 regional schema ---
+const REGION_LABEL = {
+  exw_china:   { ko: '중국 EXW',    en: 'EXW China' },
+  fob_china:   { ko: '중국 FOB',    en: 'FOB China' },
+  port_india:  { ko: '인도 도착',   en: 'India CIF' },
+  rotterdam:   { ko: '로테르담',    en: 'Rotterdam' },
+  baltimore:   { ko: '볼티모어',    en: 'Baltimore' },
+};
+
+async function loadMinorLatest(metal) {
+  const url = `${DATA_BASE}/series/${metal}/latest.parquet`;
+  const rows = await loadParquet(url);
+  return rows.map(r => ({
+    date: r.date,
+    exw_china:  num(r.exw_china),
+    fob_china:  num(r.fob_china),
+    port_india: num(r.port_india),
+    rotterdam:  num(r.rotterdam),
+    baltimore:  num(r.baltimore),
+    _source:    r._source,
+  })).sort((a, b) => a.date < b.date ? 1 : -1);
+}
+
+function minorPriceSeries(data, region = 'exw_china', count = 24) {
+  return data.slice(0, count).reverse()
+    .map(d => ({ date: d.date, v: d[region] != null ? d[region] : null }))
+    .filter(p => p.v != null);
+}
+
+function renderMinorMetalSection(metal, ts, meta) {
+  const latest = ts && ts.data && ts.data[0];
+  const sym = meta.symbol;
+  const ko = meta.name_ko;
+  if (!latest) return `<section class="metal-section metal-section--minor" data-metal="${metal}" data-screen-label="${sym} ${ko}"></section>`;
+
+  const series = minorPriceSeries(ts.data, 'exw_china', 24);
+  // Hero: EXW China 기준 (가장 안정적 시계열)
+  const mainPrice = latest.exw_china;
+  const prev = ts.data[1]?.exw_china ?? null;
+  const change = (mainPrice != null && prev != null) ? mainPrice - prev : null;
+  const dir = dirClass(change);
+  const pct = (change != null && prev) ? (change / prev * 100) : null;
+
+  const regions = ['exw_china', 'fob_china', 'port_india', 'rotterdam', 'baltimore'];
+
+  const hero = `<div class="hero hero--price">
+    <div class="hero__top">
+      <div class="hero__id">
+        <div class="hero__sym mono">${sym}</div>
+        <div>
+          <div class="hero__ko">${esc(ko)}</div>
+          <div class="hero__en">${esc(meta.name_en)} · ${esc(meta.grade || '')} · USD/t</div>
+        </div>
+      </div>
+      <span class="badge-minor mono" title="LME 비상장">MINOR</span>
+    </div>
+    <div class="hero__price-row">
+      <span class="hero__price mono" data-copy="${mainPrice ?? ''}"><span class="hero__ccy">$</span>${fmt(mainPrice)}</span>
+      <span class="hero__price-tag lbl">EXW China · 기준</span>
+    </div>
+    <div class="hero__change mono ${dir}">
+      <span>${arrow(change)}</span>
+      <span>${change != null ? (change >= 0 ? '+$' : '−$') + fmt(Math.abs(change)) : '—'}</span>
+      ${pct != null ? `<span class="hero__pct">${fmtSigned(pct, 2)}%</span>` : ''}
+      <span class="lbl"> · vs prev pub.</span>
+    </div>
+    <div class="hero__spark" data-expand-minor="${metal}">${sparkline(series, { height: 56, width: 320, strokeWidth: 1.5 })}</div>
+  </div>`;
+
+  const regionsBlock = `<div class="block">
+    <div class="block__h">
+      <span class="block__h-ko">지역별 시세</span>
+      <span class="block__h-en">Regional · USD/t</span>
+    </div>
+    <div class="kv-grid kv-grid--2">
+      ${regions.map(r => {
+        const lbl = REGION_LABEL[r];
+        const v = latest[r];
+        const prevV = ts.data[1]?.[r];
+        const ch = (v != null && prevV != null) ? v - prevV : null;
+        return row(lbl.ko, lbl.en, v, {
+          dim: v == null,
+          prefix: '$',
+          dir: dirClass(ch),
+        });
+      }).join('')}
+    </div>
+    <div class="block__note">
+      <span class="dot dot--dim"></span>
+      LME 비상장 · 출처 ${esc(latest._source || meta.source || '—')} · ${esc(meta.update_freq || 'monthly')} 갱신
+    </div>
+  </div>`;
+
+  const metaBlock = `<div class="block block--meta">
+    <span class="lbl">데이터 기준 · as of</span>
+    <span class="mono">${esc(latest.date)}</span>
+    <span class="block__sep">·</span>
+    <span class="lbl">grade</span>
+    <span class="mono">${esc(meta.grade || '—')}</span>
+  </div>`;
+
+  return `<section class="metal-section metal-section--minor" data-metal="${metal}" data-screen-label="${sym} ${ko}">
+    ${hero}
+    ${regionsBlock}
+    ${metaBlock}
+  </section>`;
+}
+
+function renderNav(metals, minors) {
+  const lmePills = METAL_ORDER.map(m => {
     const ts = metals[m];
     const latest = ts && ts.data && ts.data[0];
     const lme = (latest && latest.lme) || {};
@@ -359,9 +475,29 @@ function renderNav(metals) {
       </div>
     </button>`;
   }).join('');
+
+  const minorPills = MINOR_ORDER.map(m => {
+    const ts = minors[m];
+    const latest = ts && ts.data && ts.data[0];
+    const meta = MINOR_METALS[m];
+    const close = latest?.exw_china;
+    const prev = ts?.data?.[1]?.exw_china;
+    const change = (close != null && prev != null) ? close - prev : null;
+    const pct = (change != null && prev) ? (change / prev * 100) : null;
+    const dir = dirClass(change);
+    return `<button class="nav-pill nav-pill--${dir} nav-pill--minor" data-metal="${m}" title="${esc(meta.name_ko)} (LME 비상장)">
+      <span class="nav-pill__sym mono">${esc(meta.symbol)}</span>
+      <div class="nav-pill__col">
+        <span class="nav-pill__price mono">$${fmt(close, close > 1000 ? 0 : 2)}</span>
+        <span class="nav-pill__pct mono ${dir}">${arrow(change)} ${pct == null ? '—' : fmtSigned(pct, 2) + '%'}</span>
+      </div>
+    </button>`;
+  }).join('');
+
+  return lmePills + (minorPills ? `<div class="nav-pill__sep" aria-hidden="true"></div>` + minorPills : '');
 }
 
-function renderHeader(latestDate, krwRate, krwSrc) {
+function renderHeader(latestDate, krwRate, krwSrc, unseen) {
   const ts = new Date().toLocaleTimeString('en-GB', { hour12: false });
   return `<header class="app__header">
     <div class="app__head-l">
@@ -373,6 +509,8 @@ function renderHeader(latestDate, krwRate, krwSrc) {
     <div class="app__head-r mono">
       <span class="dot dot--live"></span>
       <span class="head__ts">${esc(latestDate || '')} · ${ts}</span>
+      ${renderBell(unseen)}
+      ${renderTweaksGear()}
     </div>
   </header>
   <div class="app__rate">
@@ -385,6 +523,7 @@ function renderHeader(latestDate, krwRate, krwSrc) {
 }
 
 // --- Expanded chart overlay ---
+// opts.markers: [{date, kind:'news'|'event', sentiment, title, url, eventType, magnitude}]
 function openChart(label, series, opts = {}) {
   const ccy = opts.ccy || '$';
   const fmtCcy = (n, d) => (n == null || isNaN(n)) ? '—' : ccy + fmt(n, d);
@@ -446,6 +585,23 @@ function openChart(label, series, opts = {}) {
         }).join('')}
         <path d="${dArea}" fill="url(#exp-fill)"/>
         <path d="${dLine}" fill="none" stroke="${stroke}" stroke-width="1.5"/>
+        ${(() => {
+          if (!opts.markers || !opts.markers.length) return '';
+          const dateToIdx = new Map();
+          for (let i = 0; i < series.length; i++) dateToIdx.set(series[i].date, i);
+          return opts.markers.map((mk, idx) => {
+            const i = dateToIdx.get(mk.date);
+            if (i == null) return '';
+            const x = pts[i][0];
+            const color = mk.kind === 'news'
+              ? (mk.sentiment > 0 ? 'var(--up)' : mk.sentiment < 0 ? 'var(--down)' : 'var(--accent)')
+              : 'var(--accent)';
+            return `<g class="chart-mk" data-mk-idx="${idx}" style="cursor:pointer">
+              <line x1="${x}" x2="${x}" y1="${padT}" y2="${H-padB}" stroke="${color}" stroke-width="1.5" stroke-opacity="0.55" stroke-dasharray="3 2"/>
+              <circle cx="${x}" cy="${padT+4}" r="3.5" fill="${color}"/>
+            </g>`;
+          }).join('');
+        })()}
         <g data-hover style="display:none">
           <line data-hover-line x1="0" x2="0" y1="${padT}" y2="${H-padB}" stroke="${stroke}" stroke-opacity="0.5" stroke-dasharray="2 3"/>
           <circle data-hover-dot cx="0" cy="0" r="4" fill="${stroke}" stroke="var(--bg-1)" stroke-width="1.5"/>
@@ -508,6 +664,31 @@ function openChart(label, series, opts = {}) {
   svg.addEventListener('touchmove', onMove, { passive: false });
   svg.addEventListener('touchend', onLeave);
 
+  // Marker click → popover
+  if (opts.markers && opts.markers.length) {
+    overlay.querySelectorAll('.chart-mk').forEach(g => {
+      g.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(g.dataset.mkIdx, 10);
+        const mk = opts.markers[idx];
+        if (!mk) return;
+        const existing = overlay.querySelector('.chart-mk-pop');
+        if (existing) existing.remove();
+        const pop = document.createElement('div');
+        pop.className = 'chart-mk-pop';
+        const sentLbl = mk.kind === 'news'
+          ? (mk.sentiment > 0 ? '↑ 상승' : mk.sentiment < 0 ? '↓ 하락' : '· 중립')
+          : `${mk.type || 'event'} ${mk.magnitude != null ? '· ' + Math.round(mk.magnitude).toLocaleString() + 't' : ''}`;
+        pop.innerHTML = `<div class="chart-mk-pop__head mono">${esc(mk.date)} · ${esc(sentLbl)}</div>
+          <div class="chart-mk-pop__title">${esc(mk.title || '')}</div>
+          ${mk.url ? `<a class="chart-mk-pop__link" href="${esc(mk.url)}" target="_blank" rel="noopener">원문 보기 →</a>` : ''}
+          <button class="chart-mk-pop__close" aria-label="close">✕</button>`;
+        overlay.querySelector('.chart-overlay__panel').appendChild(pop);
+        pop.querySelector('.chart-mk-pop__close').addEventListener('click', () => pop.remove());
+      });
+    });
+  }
+
   document.body.appendChild(overlay);
 }
 
@@ -548,6 +729,8 @@ async function loadAll() {
   // Populate module-level metal metadata from manifest.
   METALS = manifest.metals;
   METAL_ORDER = Object.keys(METALS);
+  MINOR_METALS = manifest.minor_metals || {};
+  MINOR_ORDER = Object.keys(MINOR_METALS);
 
   const latestArr = await Promise.all(METAL_ORDER.map(m =>
     loadLatest(m).catch(err => { console.warn(`load ${m}:`, err); return []; })
@@ -561,28 +744,55 @@ async function loadAll() {
       data: latestArr[i],
     };
   });
-  return { manifest, metals };
+
+  const minors = {};
+  if (MINOR_ORDER.length) {
+    const minorArr = await Promise.all(MINOR_ORDER.map(m =>
+      loadMinorLatest(m).catch(err => { console.warn(`minor load ${m}:`, err); return []; })
+    ));
+    MINOR_ORDER.forEach((m, i) => {
+      minors[m] = {
+        metal: m,
+        symbol: MINOR_METALS[m].symbol,
+        unit: MINOR_METALS[m].unit,
+        data: minorArr[i],
+      };
+    });
+  }
+  return { manifest, metals, minors };
 }
 
 // --- Init ---
 async function init() {
-  const { manifest, metals } = await loadAll();
+  const tweaks = loadTweaks();
+  const [{ manifest, metals, minors }, news, events] = await Promise.all([
+    loadAll(),
+    loadNews().catch(err => { console.warn('news load:', err); return []; }),
+    loadEvents().catch(err => { console.warn('events load:', err); return []; }),
+  ]);
+
   const root = document.getElementById('root');
   const latest0 = metals.copper?.data?.[0];
   const latestDate = manifest?.last_updated || latest0?.date;
   const krw = latest0?.krw || {};
+  const seenAt = lastSeenAt();
+  let unseen = unseenCount(news, seenAt);
+  let currentMetal = METAL_ORDER[0] || null;
 
   root.outerHTML = `<div class="app" id="root" data-density="compact" data-lang="ko" data-accent="muted">
-    ${renderHeader(latestDate, krw.rate, krw.source)}
-    <nav class="app__nav nav--pricepct">${renderNav(metals)}</nav>
+    ${renderHeader(latestDate, krw.rate, krw.source, unseen)}
+    <nav class="app__nav nav--pricepct">${renderNav(metals, minors)}</nav>
     <div class="app__scroller">
       ${METAL_ORDER.map(m => renderMetalSection(m, metals[m])).join('')}
+      ${MINOR_ORDER.map(m => renderMinorMetalSection(m, minors[m], MINOR_METALS[m])).join('')}
       <footer class="app__footer">
         <div class="mono">END · 데이터 끝</div>
-        <div class="lbl">Source: NH선물 · LME · SHFE · BOK · PDF · 마감 기준</div>
+        <div class="lbl">Source: NH선물 · LME · SHFE · BOK · scrapmonster (minor) · GDELT/RSS (news) · 마감 기준</div>
         <div class="lbl">Format: Apache Parquet · ${manifest?.total_days || '—'}일 · ${manifest?.years?.[0] || '—'}~${manifest?.years?.[manifest.years.length - 1] || '—'}</div>
       </footer>
     </div>
+    ${tweaks.showNews ? renderDrawer(news, currentMetal, tweaks, seenAt) : ''}
+    ${renderTweaksPanel(tweaks)}
   </div>`;
 
   const app = document.getElementById('root');
@@ -590,6 +800,58 @@ async function init() {
   const nav = app.querySelector('.app__nav');
 
   bindLongPress(app);
+
+  // Drawer rerender helper (for filter changes when active metal changes)
+  const rerenderDrawer = () => {
+    if (!tweaks.showNews) return;
+    const oldDrawer = app.querySelector('#news-drawer');
+    const oldBackdrop = app.querySelector('#news-drawer-backdrop');
+    const wasOpen = oldDrawer?.classList.contains('is-open');
+    oldDrawer?.remove();
+    oldBackdrop?.remove();
+    app.insertAdjacentHTML('beforeend', renderDrawer(news, currentMetal, tweaks, lastSeenAt()));
+    bindDrawer(app, () => { markSeen(); refreshBell(); });
+    if (wasOpen) {
+      app.querySelector('#news-drawer')?.classList.add('is-open');
+      app.querySelector('#news-drawer-backdrop')?.classList.add('is-open');
+    }
+  };
+
+  const refreshBell = () => {
+    const cnt = unseenCount(news, lastSeenAt());
+    const head = app.querySelector('.app__head-r');
+    const old = head.querySelector('#news-bell');
+    old?.remove();
+    head.insertAdjacentHTML('afterbegin', renderBell(cnt));
+    head.querySelector('#news-bell').addEventListener('click', () => {
+      const dr = app.querySelector('#news-drawer');
+      if (!dr) return;
+      const isOpen = dr.classList.contains('is-open');
+      if (isOpen) {
+        dr.classList.remove('is-open');
+        app.querySelector('#news-drawer-backdrop')?.classList.remove('is-open');
+      } else {
+        dr.classList.add('is-open');
+        app.querySelector('#news-drawer-backdrop')?.classList.add('is-open');
+        markSeen();
+        setTimeout(refreshBell, 300);
+      }
+    });
+  };
+
+  // Bind drawer + tweaks
+  if (tweaks.showNews) bindDrawer(app, () => { markSeen(); refreshBell(); });
+  bindTweaks(app, tweaks, (newTweaks) => {
+    if (newTweaks.showNews && !app.querySelector('#news-drawer')) {
+      app.insertAdjacentHTML('beforeend', renderDrawer(news, currentMetal, newTweaks, lastSeenAt()));
+      bindDrawer(app, () => { markSeen(); refreshBell(); });
+    } else if (!newTweaks.showNews && app.querySelector('#news-drawer')) {
+      app.querySelector('#news-drawer')?.remove();
+      app.querySelector('#news-drawer__backdrop')?.remove();
+    } else {
+      rerenderDrawer();
+    }
+  });
 
   nav.querySelectorAll('.nav-pill').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -606,10 +868,12 @@ async function init() {
         e.target.classList.add('is-entering');
         if (e.intersectionRatio > 0.6) {
           const m = e.target.dataset.metal;
-          if (m) {
+          if (m && m !== currentMetal) {
+            currentMetal = m;
             nav.querySelectorAll('.nav-pill').forEach(b => b.classList.toggle('is-active', b.dataset.metal === m));
             const activePill = nav.querySelector(`.nav-pill[data-metal="${m}"]`);
             activePill?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            rerenderDrawer();  // 활성 metal 바뀌면 drawer 필터 업데이트
           }
         }
       }
@@ -617,7 +881,7 @@ async function init() {
   }, { root: scroller, threshold: [0, 0.6, 1] });
   sections.forEach(s => obs.observe(s));
 
-  // Hero expand → chart overlay (lazy-load full history)
+  // Hero expand → chart overlay with markers (LME 6종)
   app.querySelectorAll('[data-expand]').forEach(el => {
     el.addEventListener('click', async () => {
       const m = el.dataset.expand;
@@ -625,19 +889,48 @@ async function init() {
       if (!latestData?.length) return;
       const quickSeries = priceSeries(latestData, 'close');
       const title = `${METALS[m].name_ko} · ${METALS[m].symbol} 3M`;
-      openChart(title, quickSeries);
-      // Async upgrade: full series across all years.
+      const dates = quickSeries.map(p => p.date);
+      const markers = chartMarkersFor(m, dates, news, events, tweaks);
+      openChart(title, quickSeries, { markers });
       const years = manifest?.metals?.[m]?.years || [];
       if (years.length > 1) {
         const full = await loadFullSeries(m, manifest);
         if (full.length > latestData.length) {
           const fullSeries = priceSeries(full, 'close', full.length);
+          const fullDates = fullSeries.map(p => p.date);
+          const fullMarkers = chartMarkersFor(m, fullDates, news, events, tweaks);
           document.querySelector('.chart-overlay')?.remove();
-          openChart(title + ' · 전체', fullSeries);
+          openChart(title + ' · 전체', fullSeries, { markers: fullMarkers });
         }
       }
     });
   });
+
+  // Minor metal expand (Sb)
+  app.querySelectorAll('[data-expand-minor]').forEach(el => {
+    el.addEventListener('click', () => {
+      const m = el.dataset.expandMinor;
+      const data = minors[m]?.data;
+      if (!data?.length) return;
+      const series = minorPriceSeries(data, 'exw_china', data.length);
+      const meta = MINOR_METALS[m];
+      const title = `${meta.name_ko} · ${meta.symbol} EXW China`;
+      openChart(title, series);
+    });
+  });
+
+  // 5분 주기 뉴스 polling — 새 뉴스 들어오면 bell 갱신
+  setInterval(async () => {
+    try {
+      const fresh = await loadNews();
+      if (fresh.length !== news.length) {
+        news.length = 0;
+        news.push(...fresh);
+        refreshBell();
+        rerenderDrawer();
+      }
+    } catch (e) { /* skip silently */ }
+  }, newsConstants.POLL_MS);
 }
 
 init().catch(err => {

@@ -13,8 +13,10 @@ const cases = [
   'data/series/copper/latest.parquet',
   'data/series/copper/2025.parquet',
   'data/series/tin/latest.parquet',
+  'data/series/antimony/latest.parquet',
   'data/exchange.parquet',
   'data/raw/2026.parquet',
+  'data/news/2026.parquet',
 ];
 
 let passed = 0, failed = 0;
@@ -24,7 +26,7 @@ for (const rel of cases) {
     const rows = await parquetReadObjects({ file: buf.buffer, compressors });
     if (!Array.isArray(rows) || rows.length === 0) throw new Error('empty rows');
     const first = rows[0];
-    if (!first.date) throw new Error(`first row missing 'date': ${JSON.stringify(first).slice(0, 100)}`);
+    if (first.date == null) throw new Error(`first row missing 'date': ${JSON.stringify(first).slice(0, 100)}`);
     console.log(`✓ ${rel} — ${rows.length} rows, sample: ${first.date}`);
     passed++;
   } catch (e) {

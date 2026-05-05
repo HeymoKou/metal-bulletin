@@ -413,3 +413,173 @@ body {
   padding: 6px 10px; text-decoration: none; backdrop-filter: blur(6px);
 }
 .desk-preview-link:hover { color: var(--text); border-color: var(--text-mute); }
+
+/* ---------- News bell ---------- */
+.news-bell {
+  position: relative; background: transparent; border: 1px solid var(--border);
+  color: var(--text-soft); cursor: pointer; padding: 4px 7px; border-radius: 6px;
+  font-size: 12px; line-height: 1; display: inline-flex; align-items: center; gap: 4px;
+}
+.news-bell:hover { color: var(--text); border-color: var(--text-mute); }
+.news-bell__icon { font-size: 12px; filter: grayscale(0.4); }
+.news-bell__badge {
+  background: var(--accent); color: #1c1500; font-size: 9.5px; font-weight: 700;
+  padding: 1px 5px; border-radius: 999px; min-width: 14px; text-align: center;
+}
+.news-bell.is-new .news-bell__dot {
+  position: absolute; top: 2px; right: 2px; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--up); box-shadow: 0 0 0 2px var(--bg-1);
+  animation: livepulse 2s infinite;
+}
+
+/* ---------- Tweaks gear ---------- */
+.tweaks-gear {
+  background: transparent; border: 1px solid var(--border); color: var(--text-soft);
+  cursor: pointer; padding: 3px 7px; border-radius: 6px; font-size: 13px; line-height: 1;
+}
+.tweaks-gear:hover { color: var(--text); border-color: var(--text-mute); }
+
+/* ---------- Tweaks panel ---------- */
+.tweaks-panel {
+  position: fixed; top: 56px; right: 8px; width: 260px; z-index: 9100;
+  background: var(--bg-elev); border: 1px solid var(--border-strong); border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55); transform: translateY(-8px); opacity: 0;
+  pointer-events: none; transition: opacity 0.18s, transform 0.18s;
+}
+.tweaks-panel.is-open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.tweaks-panel__head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  font: 600 11px/1 'IBM Plex Mono', monospace; color: var(--text-soft);
+  letter-spacing: 0.04em; text-transform: uppercase;
+}
+.tweaks-panel__close {
+  background: transparent; border: none; color: var(--text-mute); cursor: pointer;
+  font-size: 12px; padding: 2px 4px;
+}
+.tweaks-panel__body { padding: 10px; display: flex; flex-direction: column; gap: 12px; }
+.tweaks-row {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 12px; color: var(--text-soft); cursor: pointer;
+}
+.tweaks-row--col { flex-direction: column; align-items: stretch; gap: 6px; cursor: default; }
+.tweaks-row__lbl { display: flex; justify-content: space-between; font-size: 11.5px; }
+.tweaks-row input[type="range"] { width: 100%; accent-color: var(--accent); }
+.tweaks-row input[type="checkbox"] { accent-color: var(--accent); }
+
+/* ---------- News drawer (right side desktop / bottom sheet mobile) ---------- */
+.news-drawer__backdrop {
+  position: fixed; inset: 0; z-index: 9000; background: rgba(0,0,0,0.4);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.news-drawer__backdrop.is-open { opacity: 1; pointer-events: auto; }
+.news-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 92vw;
+  z-index: 9001; background: var(--bg-1); border-left: 1px solid var(--border-strong);
+  transform: translateX(100%); transition: transform 0.24s cubic-bezier(0.2, 0.7, 0.2, 1);
+  display: flex; flex-direction: column;
+}
+.news-drawer.is-open { transform: translateX(0); }
+.news-drawer__handle { display: none; }
+.news-drawer__head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 12px 14px 10px; border-bottom: 1px solid var(--border);
+}
+.news-drawer__title { font-size: 13px; font-weight: 600; color: var(--text); }
+.news-drawer__sub { font-size: 10.5px; color: var(--text-mute); margin-top: 2px; letter-spacing: 0.04em; }
+.news-drawer__close {
+  background: transparent; border: none; color: var(--text-mute); cursor: pointer;
+  font-size: 14px; padding: 2px 4px;
+}
+.news-drawer__list { flex: 1; overflow-y: auto; }
+.news-drawer__empty { padding: 24px 14px; text-align: center; color: var(--text-mute); font-size: 12px; }
+
+/* Mobile: bottom sheet 62vh */
+@media (max-width: 720px) {
+  .news-drawer {
+    top: auto; right: 0; left: 0; bottom: 0; width: 100%; height: 62vh; max-width: none;
+    border-left: none; border-top: 1px solid var(--border-strong);
+    border-radius: 12px 12px 0 0; transform: translateY(100%);
+  }
+  .news-drawer.is-open { transform: translateY(0); }
+  .news-drawer__handle {
+    display: block; width: 40px; height: 4px; background: var(--border-strong);
+    border-radius: 2px; margin: 8px auto 4px; cursor: grab;
+  }
+}
+
+/* ---------- News row ---------- */
+.news-row {
+  display: block; padding: 10px 14px; border-bottom: 1px solid var(--border);
+  text-decoration: none; color: var(--text); position: relative; transition: background 0.15s;
+}
+.news-row:hover { background: var(--bg-2); }
+.news-row.is-new::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent);
+}
+.news-row.is-dim { opacity: 0.55; }
+.news-row__head {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+  font-size: 10.5px; flex-wrap: wrap;
+}
+.news-row__icon {
+  font-size: 11px; color: var(--text-mute); width: 14px; text-align: center;
+}
+.news-row__sent {
+  font-size: 9.5px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+.news-row__sent--up   { background: var(--up-soft);   color: var(--up); }
+.news-row__sent--down { background: var(--down-soft); color: var(--down); }
+.news-row__sent--mute { background: var(--bg-3);      color: var(--text-mute); }
+.news-row__metal {
+  font: 600 9.5px/1 'IBM Plex Mono', monospace; color: var(--text-soft);
+  background: var(--bg-3); padding: 1px 5px; border-radius: 3px; text-transform: uppercase;
+}
+.news-row__time { margin-left: auto; color: var(--text-mute); font-size: 10px; }
+.news-row__title {
+  font-size: 12.5px; line-height: 1.4; color: var(--text);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; word-break: keep-all;
+}
+.news-row__summary {
+  font-size: 11.5px; line-height: 1.45; color: var(--text-soft); margin-top: 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.news-row__meta {
+  display: flex; justify-content: space-between; margin-top: 6px;
+  font-size: 9.5px; color: var(--text-mute); letter-spacing: 0.04em;
+}
+
+/* ---------- Chart marker popover ---------- */
+.chart-mk:hover line { stroke-opacity: 0.85; }
+.chart-mk-pop {
+  position: absolute; bottom: 12px; left: 12px; right: 12px; max-width: 360px;
+  background: var(--bg-elev); border: 1px solid var(--border-strong);
+  border-radius: 6px; padding: 10px 12px; z-index: 5;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.chart-mk-pop__head { font-size: 10.5px; color: var(--text-mute); margin-bottom: 4px; letter-spacing: 0.04em; }
+.chart-mk-pop__title { font-size: 12.5px; color: var(--text); line-height: 1.4; word-break: keep-all; }
+.chart-mk-pop__link { display: inline-block; margin-top: 6px; font-size: 11px; color: var(--accent); text-decoration: none; }
+.chart-mk-pop__link:hover { text-decoration: underline; }
+.chart-mk-pop__close {
+  position: absolute; top: 4px; right: 4px; background: transparent; border: none;
+  color: var(--text-mute); cursor: pointer; font-size: 11px; padding: 2px 5px;
+}
+.chart-overlay__panel { position: relative; }
+
+/* ---------- Minor metal section (Sb 등) ---------- */
+.metal-section--minor .hero__top { justify-content: space-between; align-items: flex-start; }
+.badge-minor {
+  font: 600 9px/1 'IBM Plex Mono', monospace; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent);
+  padding: 3px 6px; border-radius: 3px; letter-spacing: 0.06em;
+}
+.hero__price-tag { display: block; font-size: 10px; color: var(--text-mute); margin-top: 2px; }
+.nav-pill__sep {
+  flex-shrink: 0; width: 1px; align-self: stretch; background: var(--border-strong);
+  margin: 4px 6px;
+}
+.nav-pill--minor .nav-pill__sym { color: var(--accent); }
