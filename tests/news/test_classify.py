@@ -51,3 +51,34 @@ def test_lme_only_no_metal_returns_empty():
     assert metals == []
     metals = classify_metals(_item("LME copper stocks at record low"))
     assert metals == ["copper"]
+
+
+# --- 한국어 동음이의 false positive 차단 ---
+
+def test_guri_city_festival_not_copper():
+    """구리시 축제 뉴스가 copper로 분류되면 안 됨 (지명 동음이의)."""
+    metals = classify_metals(_item("구리시 한강시민공원 축제 개막", "구리시민 환영"))
+    assert "copper" not in metals
+
+
+def test_guri_station_not_copper():
+    metals = classify_metals(_item("구리역 인근 교통체증", "출퇴근 혼잡"))
+    assert metals == []
+
+
+def test_copper_korean_unambiguous_passes():
+    """전기동 (unambiguous) 키워드는 negative 패턴 무관하게 통과."""
+    metals = classify_metals(_item("전기동 가격 사상 최고", "LME 시세 급등"))
+    assert "copper" in metals
+
+
+def test_copper_korean_with_context_passes():
+    """'구리' + metal context (가격/시세/생산 등)는 통과."""
+    metals = classify_metals(_item("구리 가격 급등 LME", "구리 광산 파업"))
+    assert "copper" in metals
+
+
+def test_copper_english_overrides_neg():
+    """영어 'copper' 매칭이면 한국어 negative 무시 (영어가 명확한 신호)."""
+    metals = classify_metals(_item("Copper market update", "구리시 행사 무관"))
+    assert "copper" in metals
