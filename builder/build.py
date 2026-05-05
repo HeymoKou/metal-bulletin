@@ -304,6 +304,54 @@ def _augment_manifest_with_news(manifest: dict, data_dir: Path) -> dict:
     return manifest
 
 
+# Minor metals — non-LME, separate schema (USD/MT normalized, region columns).
+# Kept apart from `metals` so FE can branch on schema cleanly.
+MINOR_METALS = {
+    "antimony": {
+        "symbol": "Sb",
+        "unit": "$/ton",
+        "name_ko": "안티몬",
+        "name_en": "Antimony",
+        "grade": "99.65% min ingot",
+        "schema": "minor_regional",  # FE marker: regional columns, no LME OHLC
+        "regions": ["exw_china", "fob_china", "port_india", "rotterdam", "baltimore"],
+        "source": "scrapmonster",
+        "update_freq": "monthly",
+    },
+}
+
+
+def _augment_manifest_with_minor(manifest: dict, data_dir: Path) -> dict:
+    """Add minor_metals section based on data/series/{key}/ directories."""
+    series_dir = data_dir / "series"
+    if not series_dir.exists():
+        return manifest
+    minor: dict = {}
+    for key, meta in MINOR_METALS.items():
+        mdir = series_dir / key
+        if not mdir.exists():
+            continue
+        years = sorted(
+            (int(p.stem) for p in mdir.glob("*.parquet") if p.stem.isdigit()),
+            reverse=True,
+        )
+        if not years:
+            continue
+        latest_date = None
+        try:
+            latest_file = mdir / "latest.parquet"
+            if latest_file.exists():
+                t = pq.read_table(latest_file, columns=["date"])
+                dates = t.column("date").to_pylist()
+                latest_date = max(dates) if dates else None
+        except Exception as e:
+            print(f"manifest minor augment failed ({key}): {e}")
+        minor[key] = {**meta, "years": years, "latest_date": latest_date}
+    if minor:
+        manifest["minor_metals"] = minor
+    return manifest
+
+
 def build_manifest(dailies: list[dict], years_per_metal: dict[str, list[int]]) -> dict:
     dates = sorted(d["date"] for d in dailies)
     all_years = sorted({y for ys in years_per_metal.values() for y in ys})
@@ -433,6 +481,7 @@ def run(data_dir: Path):
     # Manifest
     manifest = build_manifest(dailies, years_per_metal)
     manifest = _augment_manifest_with_news(manifest, data_dir)
+    manifest = _augment_manifest_with_minor(manifest, data_dir)
     (data_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
     print(f"manifest: {manifest['total_days']} days, years {manifest['years']}")
 

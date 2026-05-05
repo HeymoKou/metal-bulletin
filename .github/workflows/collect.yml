@@ -72,6 +72,19 @@ jobs:
           ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
         run: uv run python -m exchange.fetch_krw --data-dir data
 
+      - name: Antimony (Sb) — once-per-day check
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          KST_TODAY=$(TZ=Asia/Seoul date +%Y-%m-%d)
+          STATE=data/.sb_last_check
+          LAST=$(cat "$STATE" 2>/dev/null || echo "")
+          if [ "$LAST" = "$KST_TODAY" ]; then
+            echo "Sb already checked today ($LAST); skipping."
+          else
+            uv run python -m builder.sb_build --data-dir data
+            echo "$KST_TODAY" > "$STATE"
+          fi
+
       - name: Build timeseries
         if: steps.gate.outputs.skip != 'true'
         run: uv run python -m builder.build --data-dir data
