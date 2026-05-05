@@ -60,10 +60,10 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         run: uv run python -m parser.parse --mode latest --data-dir data --tmp-dir tmp/pdfs
 
-      - name: Fetch BOK exchange rates (optional)
-        if: steps.gate.outputs.skip != 'true' && env.BOK_API_KEY != ''
+      - name: Fetch BOK ECOS exchange rates
+        if: steps.gate.outputs.skip != 'true'
         env:
-          BOK_API_KEY: ${{ secrets.BOK_API_KEY }}
+          ECOS_API_KEY: ${{ secrets.ECOS_API_KEY }}
         run: uv run python -m exchange.fetch_krw --data-dir data
 
       - name: Build timeseries

@@ -26,16 +26,15 @@ def parse_bok_response(data: dict) -> list[dict]:
 def fetch_rates(api_key: str, start_date: str, end_date: str) -> list[dict]:
     start = start_date.replace("-", "")
     end = end_date.replace("-", "")
-    url = f"{BOK_API_URL}/{api_key}/json/kr/1/365/{STAT_CODE}/D/{start}/{end}/{ITEM_CODE}"
+    url = f"{BOK_API_URL}/{api_key}/json/kr/1/10000/{STAT_CODE}/D/{start}/{end}/{ITEM_CODE}"
     resp = requests.get(url)
     resp.raise_for_status()
     return parse_bok_response(resp.json())
 
 
 def run(data_dir: Path, api_key: str, start_date: str | None = None):
-    exchange_dir = data_dir / "exchange"
-    exchange_dir.mkdir(parents=True, exist_ok=True)
-    out_path = exchange_dir / "usd_krw.json"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    out_path = data_dir / "exchange.bok.json"
 
     if out_path.exists():
         existing = json.loads(out_path.read_text())
@@ -46,7 +45,12 @@ def run(data_dir: Path, api_key: str, start_date: str | None = None):
     existing_dates = {r["date"] for r in existing_rates}
 
     if start_date is None:
-        start_date = "2026-01-01"
+        # 첫 실행: 5년치. 이후: 최근 60일만 보강 (영업일 갭 + 정정 대비)
+        if existing_rates:
+            from datetime import timedelta
+            start_date = (datetime.now() - timedelta(days=60)).strftime("%Y-%m-%d")
+        else:
+            start_date = (datetime.now().replace(year=datetime.now().year - 5)).strftime("%Y-%m-%d")
     end_date = datetime.now().strftime("%Y-%m-%d")
 
     new_rates = fetch_rates(api_key, start_date, end_date)
@@ -70,8 +74,8 @@ if __name__ == "__main__":
     ap.add_argument("--data-dir", type=Path, default=Path("data"))
     ap.add_argument("--start-date", type=str, default=None)
     args = ap.parse_args()
-    api_key = os.environ.get("BOK_API_KEY", "")
+    api_key = os.environ.get("ECOS_API_KEY", "")
     if not api_key:
-        print("ERROR: BOK_API_KEY environment variable not set")
+        print("ERROR: ECOS_API_KEY environment variable not set")
         exit(1)
     run(args.data_dir, api_key, args.start_date)
