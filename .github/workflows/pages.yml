@@ -7,6 +7,10 @@ on:
       - 'site/**'
       - 'data/**'
       - '.github/workflows/pages.yml'
+  workflow_run:
+    workflows: ["Collect Daily Metal Data", "news"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -20,6 +24,8 @@ concurrency:
 
 jobs:
   deploy:
+    # workflow_run fires on all completions; gate to success only.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
