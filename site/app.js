@@ -78,9 +78,13 @@ function unflatten(r) {
   };
 }
 
+// Set in init() from manifest.last_updated — busts CDN/browser cache when data updates.
+let CACHE_BUST = '';
+
 async function loadParquet(url) {
-  const resp = await fetch(url);
-  if (!resp.ok) throw new Error(`fetch ${url}: ${resp.status}`);
+  const u = CACHE_BUST ? `${url}${url.includes('?') ? '&' : '?'}v=${CACHE_BUST}` : url;
+  const resp = await fetch(u);
+  if (!resp.ok) throw new Error(`fetch ${u}: ${resp.status}`);
   const buf = await resp.arrayBuffer();
   return await parquetReadObjects({ file: buf, compressors });
 }
@@ -725,7 +729,8 @@ async function loadFullSeries(metal, manifest) {
 }
 
 async function loadAll() {
-  const manifest = await fetch(`${DATA_BASE}/manifest.json`).then(r => r.json());
+  const manifest = await fetch(`${DATA_BASE}/manifest.json`, { cache: 'no-cache' }).then(r => r.json());
+  CACHE_BUST = manifest.last_updated || '';
   // Populate module-level metal metadata from manifest.
   METALS = manifest.metals;
   METAL_ORDER = Object.keys(METALS);
