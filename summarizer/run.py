@@ -9,6 +9,7 @@ from pathlib import Path
 from parser.news.models import RawNewsItem
 from summarizer.client import SummarizerClient
 from summarizer.providers.gemini import GeminiProvider
+from summarizer.providers.groq import GroqProvider
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -29,8 +30,10 @@ def main() -> None:
     providers = []
     if os.environ.get("GEMINI_API_KEY"):
         providers.append(GeminiProvider())
+    if os.environ.get("GROQ_API_KEY"):
+        providers.append(GroqProvider())
     if not providers:
-        logger.error("no LLM provider configured (GEMINI_API_KEY missing)")
+        logger.error("no LLM provider configured (need GEMINI_API_KEY or GROQ_API_KEY)")
         return
 
     client = SummarizerClient(providers=providers, batch_size=10)
