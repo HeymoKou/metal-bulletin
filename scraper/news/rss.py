@@ -20,8 +20,6 @@ USER_AGENT = "Mozilla/5.0 (compatible; metal-bulletin/0.1; +https://github.com/H
 # Phase 1a verified-working feeds. Dead feeds (kitco/commodity-tv/hankyung RSS) removed.
 # KORES URL changed — deferred to Phase 1b reverse engineering.
 RSS_FEEDS: list[dict] = [
-    {"source": "mining.com", "url": "https://www.mining.com/feed/", "lang": "en"},
-    {"source": "moneytoday", "url": "https://rss.mt.co.kr/mt_news.xml", "lang": "ko"},
     {"source": "snmnews", "url": "https://www.snmnews.com/rss/allArticle.xml", "lang": "ko"},
 ]
 

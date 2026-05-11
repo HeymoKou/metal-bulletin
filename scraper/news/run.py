@@ -8,19 +8,14 @@ import json
 import logging
 from pathlib import Path
 
-from scraper.news.gdelt import GDELTScraper
 from scraper.news.rss import RSSScraper
-
-# NonferrousScraper imported on-demand: works locally, TCP timeout from GitHub Actions IPs.
-# Importable but not in default list to avoid 15s CI 시간 낭비.
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    # KORES dead site, KOMIS JS-rendered, Nonferrous CI TCP timeout — 모두 default 제외
-    scrapers = [RSSScraper(), GDELTScraper()]
+    scrapers = [RSSScraper()]
     per_source_counts: dict[str, int] = {}
     all_items = []
     for scraper in scrapers:
