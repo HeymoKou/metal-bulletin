@@ -209,6 +209,30 @@ function row(ko, en, value, opts = {}) {
   </div>`;
 }
 
+function renderMonthly6m(rows) {
+  if (!Array.isArray(rows) || rows.length === 0) return '';
+  const body = rows.map(r => {
+    const ym = r.month || '';
+    const cash = r.cash != null ? '$' + fmt(r.cash) : '—';
+    const m3 = r['3m'] != null ? '$' + fmt(r['3m']) : '—';
+    return `<tr>
+      <td class="m6__ym">${esc(ym)}</td>
+      <td class="m6__v mono">${cash}</td>
+      <td class="m6__v mono">${m3}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="monthly-6m">
+    <div class="monthly-6m__h">
+      <span class="block__h-ko">최근 6개월 월평균</span>
+      <span class="block__h-en">last 6 months · monthly avg</span>
+    </div>
+    <table class="monthly-6m__t">
+      <thead><tr><th class="m6__ym">월</th><th class="m6__v">Cash</th><th class="m6__v">3M</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+  </div>`;
+}
+
 function renderMetalSection(metal, ts) {
   const latest = ts && ts.data && ts.data[0];
   const ko = METALS[metal].name_ko;
@@ -263,6 +287,7 @@ function renderMetalSection(metal, ts) {
       ${row('전월평균 Cash', 'prev mo. cash', sett.prev_monthly_avg?.cash, { dim: true, prefix: '$' })}
       ${row('전월평균 3M', 'prev mo. 3M', sett.prev_monthly_avg?.['3m'], { dim: true, prefix: '$' })}
     </div>
+    ${renderMonthly6m(METALS[metal]?.monthly_6m)}
     <div class="forwards">
       <div class="forwards__lbl">
         <span class="block__h-ko" style="font-size:10.5px">선물커브</span>

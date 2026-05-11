@@ -193,6 +193,30 @@ def test_series_parquet_has_expected_settlement_columns():
     assert not missing, f"series parquet missing columns: {missing}"
 
 
+def test_manifest_has_monthly_6m_per_metal():
+    """manifest.metals.{metal}.monthly_6m: list of 6 entries, desc, complete months only."""
+    import json as _json
+    m = _json.loads((DATA / "manifest.json").read_text())
+    for metal_key, meta in m["metals"].items():
+        rows = meta.get("monthly_6m")
+        assert isinstance(rows, list), f"{metal_key} missing monthly_6m"
+        assert len(rows) == 6, f"{metal_key} monthly_6m has {len(rows)} rows (expected 6)"
+        months = [r["month"] for r in rows]
+        # desc order
+        assert months == sorted(months, reverse=True), f"{metal_key} monthly_6m not desc"
+        # all distinct
+        assert len(set(months)) == 6, f"{metal_key} monthly_6m has dupes"
+        # current month excluded
+        latest_in_manifest = m["last_updated"][:7]
+        assert all(ym < latest_in_manifest for ym in months), (
+            f"{metal_key} monthly_6m includes current month {latest_in_manifest}"
+        )
+        # each row has cash/3m/days
+        for r in rows:
+            assert "cash" in r and "3m" in r and "days" in r
+            assert r["days"] > 0
+
+
 def test_antimony_series_has_rotterdam_column():
     """Sb series must include rotterdam (FE now defaults to it)."""
     t = pq.read_table(DATA / "series" / "antimony" / "latest.parquet")

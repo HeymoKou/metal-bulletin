@@ -600,3 +600,25 @@ body {
   text-decoration: none; font-weight: 500;
 }
 .news-drawer__ext a:hover { text-decoration: underline; }
+
+/* ---------- Monthly 6M sub-table (settlement section) ---------- */
+.monthly-6m { padding: 8px 14px 4px; border-top: 1px solid var(--border); }
+.monthly-6m__h {
+  display: flex; gap: 8px; align-items: baseline;
+  font-size: 10.5px; color: var(--text-mute);
+  margin-bottom: 4px; letter-spacing: 0.04em;
+}
+.monthly-6m__h .block__h-ko { color: var(--text); font-weight: 500; }
+.monthly-6m__t {
+  width: 100%; border-collapse: collapse; font-size: 11.5px;
+}
+.monthly-6m__t th, .monthly-6m__t td {
+  padding: 2px 4px; text-align: right;
+}
+.monthly-6m__t th {
+  font-weight: 500; color: var(--text-mute);
+  font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.monthly-6m__t td.m6__ym, .monthly-6m__t th.m6__ym { text-align: left; color: var(--text-mute); }
+.monthly-6m__t tbody tr:hover { background: rgba(255, 255, 255, 0.02); }

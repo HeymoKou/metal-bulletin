@@ -352,6 +352,56 @@ def _augment_manifest_with_minor(manifest: dict, data_dir: Path) -> dict:
     return manifest
 
 
+def _augment_manifest_with_monthly_6m(manifest: dict, dailies: list[dict]) -> dict:
+    """Add metals.{metal}.monthly_6m: last 6 complete months of settlement Cash/3M average.
+
+    Excludes current calendar month (partial). Output sorted desc (most recent first).
+    """
+    from collections import defaultdict
+
+    if not dailies:
+        return manifest
+
+    latest_ym = max(d["date"][:7] for d in dailies)
+
+    # by_metal[metal][YYYY-MM] = {"cash": [...], "m3": [...]}
+    by_metal: dict[str, dict[str, dict[str, list[float]]]] = defaultdict(
+        lambda: defaultdict(lambda: {"cash": [], "m3": []})
+    )
+    for d in dailies:
+        ym = d["date"][:7]
+        if ym >= latest_ym:  # skip current/incomplete month
+            continue
+        for metal, mdata in (d.get("metals") or {}).items():
+            sett = (mdata or {}).get("settlement") or {}
+            cash = sett.get("cash")
+            m3 = sett.get("3m")
+            if cash is None and m3 is None:
+                continue
+            bucket = by_metal[metal][ym]
+            if cash is not None:
+                bucket["cash"].append(cash)
+            if m3 is not None:
+                bucket["m3"].append(m3)
+
+    for metal in manifest.get("metals", {}):
+        per_month = by_metal.get(metal, {})
+        months = sorted(per_month.keys(), reverse=True)[:6]
+        rows = []
+        for ym in months:
+            data = per_month[ym]
+            cash_avg = sum(data["cash"]) / len(data["cash"]) if data["cash"] else None
+            m3_avg = sum(data["m3"]) / len(data["m3"]) if data["m3"] else None
+            rows.append({
+                "month": ym,
+                "cash": round(cash_avg, 2) if cash_avg is not None else None,
+                "3m": round(m3_avg, 2) if m3_avg is not None else None,
+                "days": max(len(data["cash"]), len(data["m3"])),
+            })
+        manifest["metals"][metal]["monthly_6m"] = rows
+    return manifest
+
+
 def build_manifest(dailies: list[dict], years_per_metal: dict[str, list[int]]) -> dict:
     dates = sorted(d["date"] for d in dailies)
     all_years = sorted({y for ys in years_per_metal.values() for y in ys})
@@ -480,6 +530,7 @@ def run(data_dir: Path):
 
     # Manifest
     manifest = build_manifest(dailies, years_per_metal)
+    manifest = _augment_manifest_with_monthly_6m(manifest, dailies)
     manifest = _augment_manifest_with_news(manifest, data_dir)
     manifest = _augment_manifest_with_minor(manifest, data_dir)
     (data_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
