@@ -1,7 +1,7 @@
 """PPS scraper tests."""
 from pathlib import Path
 
-from scraper.news.pps import parse_list
+from scraper.news.pps import parse_attachment_url, parse_list
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -19,3 +19,16 @@ def test_parse_list_filters_two_series():
     )
     for it in items:
         assert it["bbs_sn"].isdigit() and len(it["bbs_sn"]) == 10
+
+
+def test_parse_attachment_url_strips_jsessionid():
+    html = (FIX / "pps_view.html").read_text(encoding="utf-8")
+    url = parse_attachment_url(html)
+    assert url is not None
+    assert url.startswith("/common/fileDown.do")
+    assert "jsessionid" not in url.lower()
+    assert "key=" in url and "sn=" in url
+
+
+def test_parse_attachment_url_returns_none_when_missing():
+    assert parse_attachment_url("<html>no attachment</html>") is None

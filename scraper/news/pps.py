@@ -35,6 +35,20 @@ def _is_target(title: str) -> bool:
     return False
 
 
+_ATTACH_RE = re.compile(
+    r'href="(/common/fileDown\.do[^"]+)"',
+    re.IGNORECASE,
+)
+_JSESSION_RE = re.compile(r";jsessionid=[^?]+", re.IGNORECASE)
+
+
+def parse_attachment_url(html: str) -> str | None:
+    m = _ATTACH_RE.search(html)
+    if not m:
+        return None
+    return _JSESSION_RE.sub("", m.group(1))
+
+
 def parse_list(html: str) -> list[dict]:
     out = []
     seen: set[str] = set()
