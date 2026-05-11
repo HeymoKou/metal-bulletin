@@ -611,8 +611,9 @@ body {
 }
 .monthly-6m__sub { font-size: 8.5px; margin-top: 1px; }
 .monthly-6m__row {
-  flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; font-size: 12px;
+  flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
+  font-size: 11px; min-width: 0;
 }
-.monthly-6m__row > div { display: flex; flex-direction: column; gap: 1px; }
+.monthly-6m__row > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .monthly-6m__row .lbl { font-size: 9px; }
-.monthly-6m__3m { color: var(--text-mute); font-size: 11px; }
+.monthly-6m__3m { color: var(--text-mute); font-size: 10px; }

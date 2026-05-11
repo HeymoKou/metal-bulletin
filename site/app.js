@@ -212,14 +212,13 @@ function row(ko, en, value, opts = {}) {
 function renderMonthly6m(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return '';
   // builder stores desc (most recent first); display chronological (oldest left → newest right).
+  const fmtInt = v => v != null ? Math.round(v).toLocaleString('en-US') : '—';
   const cells = rows.slice().reverse().map(r => {
     const ym = (r.month || '').slice(2);  // "2026-04" → "26-04"
-    const cash = r.cash != null ? '$' + fmt(r.cash) : '—';
-    const m3 = r['3m'] != null ? '$' + fmt(r['3m']) : '—';
     return `<div>
       <div class="lbl">${esc(ym)}</div>
-      <div>${cash}</div>
-      <div class="monthly-6m__3m">${m3}</div>
+      <div>${fmtInt(r.cash)}</div>
+      <div class="monthly-6m__3m">${fmtInt(r['3m'])}</div>
     </div>`;
   }).join('');
   return `<div class="monthly-6m">
