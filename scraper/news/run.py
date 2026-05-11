@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    scrapers = [RSSScraper(), PPSScraper()]
+    # PPS deferred from default pipeline: 한국 gov 사이트(pps.go.kr) GH Actions IP block
+    # (ConnectionResetError on /bichuk/bbs/list.do). Local 실행은 OK — 수동 합류 가능.
+    scrapers = [RSSScraper()]
     per_source_counts: dict[str, int] = {}
     all_items = []
     for scraper in scrapers:

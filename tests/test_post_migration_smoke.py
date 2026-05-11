@@ -82,17 +82,21 @@ def test_rss_feeds_is_snmnews_only():
     assert sources == {"snmnews"}, f"unexpected RSS sources: {sources}"
 
 
-def test_default_scrapers_are_rss_plus_pps():
-    """Default pipeline = RSS (snmnews) + PPS. GDELT/Nonferrous removed."""
+def test_default_scrapers_are_rss_only():
+    """Default pipeline = RSS (snmnews). PPS defer (한국 gov GH IP block).
+    GDELT/Nonferrous fully removed.
+    """
     import inspect
 
     from scraper.news import run as run_mod
 
     src = inspect.getsource(run_mod.main)
     assert "RSSScraper()" in src
-    assert "PPSScraper()" in src
     assert "GDELTScraper" not in src
     assert "NonferrousScraper" not in src
+    # PPSScraper code still imported (manual local runs use it) but not instantiated
+    # in default scrapers list
+    assert "PPSScraper()" not in src
 
 
 # ----------------------------- classify PPS bypass -----------------------------
