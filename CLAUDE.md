@@ -34,9 +34,10 @@ PDF (NH선물) **OR** westmetall.com → daily JSON → Parquet (`data/series/{m
 
 ## 뉴스 파이프라인
 PDF 가격과 독립. 4단계: scrape → parse (dedupe+classify) → summarize (Gemini Flash batch) → build parquet.
-- 소스: snmnews 철강금속신문 (RSS) + 조달청 PPS 비축물자 주간리포트 (PDF→pdfplumber)
-- 폐기된 소스: mining.com/moneytoday RSS, GDELT 2.0 API, 한국비철금속협회 (헤드라인 오프토픽 다수 → snmnews+pps만)
-- KORES/KOMIS deferred — 사이트 dead/JS-rendered, Playwright 필요
+- 소스: snmnews 철강금속신문 (RSS) — CI에서 실제 작동
+- PPS 조달청 비축물자 주간리포트 (PDF→pdfplumber): code+test 보존, **CI 미사용** — 한국 gov 사이트가 모든 cloud IP 차단 (AWS us-east/tokyo/seoul 전부 `ConnectionResetError 104`). 2026-05-11 Lambda ap-northeast-2 (15.165.8.180) 직접 검증. 로컬 KR 가정 IP에서만 작동. `scripts/lambda_pps_test.py`에 stdlib-only 재현 코드.
+- 폐기된 소스: mining.com/moneytoday RSS, GDELT 2.0 API, 한국비철금속협회 (헤드라인 오프토픽 다수 → snmnews만)
+- KORES/KOMIS deferred — KOMIS 비철 LME CASH는 우리 sett_cash와 100% 중복 (2026-05-08 Ni 18890.0 일치 검증). data.go.kr 자체 Open API 없음.
 - LLM provider 인터페이스 (`SummarizerProvider` Protocol) → 추후 groq/cerebras failover 확장 가능
 - 분류 1차 필터 (`parser/news/classify.py`) → 무관 헤드라인은 LLM 안 부름 (비용 절감)
 - 출력 스키마: `data/news/{year}.parquet` (date, source, url, url_hash, title, summary_ko, metals, sentiment, event_type, confidence, lang)
@@ -53,6 +54,22 @@ PDF 가격과 독립. 4단계: scrape → parse (dedupe+classify) → summarize 
 - `_safe()` 래퍼로 섹션별 부분 파싱 허용 — 한 페이지 깨져도 가능한 데이터는 보존
 - SHFE 테이블 인덱스는 헤더 텍스트로 동적 탐지 (PDF 레이아웃 변동 대응)
 - `_warnings` 필드에 부분 실패 기록
+
+## settlement 컬럼 매핑 (PDF page0 table[1])
+NH PDF 정산가 테이블 11 columns. 2026-05-11 swap 버그 fix 적용 후 매핑:
+| col | 의미 | parser key |
+|-----|------|-----------|
+| 1 | 금일 cash | `cash` |
+| 2 | 금일 3M | `3m` |
+| 3 | (dup of col[1]) | unused |
+| 4 | **전월평균** cash | `prev_monthly_avg.cash` |
+| 5 | **전월평균** 3M | `prev_monthly_avg.3m` |
+| 6 | **당월누적평균** cash | `monthly_avg.cash` |
+| 7 | **당월누적평균** 3M | `monthly_avg.3m` |
+| 8/9/10 | forwards M+1/M+2/M+3 | `forwards.m1/m2/m3` |
+
+검증: 2026-05-08 copper `sett_mavg_cash`=13515.39 (5월 일별 변동) / `sett_prev_mavg_cash`=12891.38 (4월 평균 = 4월 daily mean 12891.375와 일치).
+구 버그: col[4-5] ↔ col[6-7] swap. 2015~ 2630 entries 마이그레이션 (`scripts/migrate_swap_mavg.py`) 후 commit `2018866`.
 
 ## 환율 폴백
 `builder.resolve_rate()`: BOK ECOS → PDF 내장 → None. 각 daily 엔트리 `krw.source` 추적.
