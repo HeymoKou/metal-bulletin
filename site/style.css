@@ -589,3 +589,14 @@ body {
 .news-source--pps {
   background: #0a4a8f; color: #fff; font-weight: 600;
 }
+
+/* PPS external link banner in news drawer */
+.news-drawer__ext {
+  padding: 8px 14px; border-bottom: 1px solid var(--border-strong);
+  background: rgba(10, 74, 143, 0.08);
+}
+.news-drawer__ext a {
+  display: block; font-size: 12px; color: #6bb4ff;
+  text-decoration: none; font-weight: 500;
+}
+.news-drawer__ext a:hover { text-decoration: underline; }

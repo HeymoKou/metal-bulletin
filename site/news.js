@@ -213,6 +213,11 @@ export function renderDrawer(news, currentMetal, tweaks, lastSeen) {
       </div>
       <button class="news-drawer__close" id="news-drawer-close" aria-label="닫기">✕</button>
     </header>
+    <div class="news-drawer__ext">
+      <a href="https://www.pps.go.kr/bichuk/bbs/list.do?key=00826" target="_blank" rel="noopener">
+        🏛️ 조달청 비철·희소금속 주간동향 →
+      </a>
+    </div>
     <div class="news-drawer__list">
       ${items || '<div class="news-drawer__empty">필터 결과 없음</div>'}
     </div>
