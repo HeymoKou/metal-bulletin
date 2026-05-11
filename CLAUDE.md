@@ -56,20 +56,29 @@ PDF 가격과 독립. 4단계: scrape → parse (dedupe+classify) → summarize 
 - `_warnings` 필드에 부분 실패 기록
 
 ## settlement 컬럼 매핑 (PDF page0 table[1])
-NH PDF 정산가 테이블 11 columns. 2026-05-11 swap 버그 fix 적용 후 매핑:
-| col | 의미 | parser key |
-|-----|------|-----------|
-| 1 | 금일 cash | `cash` |
-| 2 | 금일 3M | `3m` |
-| 3 | (dup of col[1]) | unused |
-| 4 | **전월평균** cash | `prev_monthly_avg.cash` |
-| 5 | **전월평균** 3M | `prev_monthly_avg.3m` |
-| 6 | **당월누적평균** cash | `monthly_avg.cash` |
-| 7 | **당월누적평균** 3M | `monthly_avg.3m` |
-| 8/9/10 | forwards M+1/M+2/M+3 | `forwards.m1/m2/m3` |
+NH PDF 정산가 테이블 11 cols. 2026-05-11 라벨 정정 + 소급 마이그레이션 적용:
 
-검증: 2026-05-08 copper `sett_mavg_cash`=13515.39 (5월 일별 변동) / `sett_prev_mavg_cash`=12891.38 (4월 평균 = 4월 daily mean 12891.375와 일치).
-구 버그: col[4-5] ↔ col[6-7] swap. 2015~ 2630 entries 마이그레이션 (`scripts/migrate_swap_mavg.py`) 후 commit `2018866`.
+| col | PDF 헤더 | parser key | series 컬럼 |
+|-----|----------|-----------|-------------|
+| 1 | 금일 Cash (KRX 17:00) | `cash` | `sett_cash` |
+| 2 | 금일 3M | `3m` | `sett_3m` |
+| 3 | **당월평균 Cash** (PDF 자체 계산) | (저장 안 함 — manifest current_month_avg 사용) | — |
+| 4 | 전월평균 Cash | `prev_monthly_avg.cash` | `sett_prev_mavg_cash` |
+| 5 | 전월평균 3M | `prev_monthly_avg.3m` | `sett_prev_mavg_3m` |
+| 6 | **LME 정산가 Cash** (LONDON 17:00) | `lme_settle.cash` | `sett_lme_settle_cash` |
+| 7 | **LME 정산가 3M** | `lme_settle.3m` | `sett_lme_settle_3m` |
+| 8/9/10 | forwards M+1/M+2/M+3 | `forwards.m1/m2/m3` | `sett_fwd_m1/m2/m3` |
+
+**중요:**
+- PDF에 **당월평균 3M 컬럼은 없음**. 진짜 당월평균 Cash는 col[3] 단일.
+- FE 당월평균 Cash/3M 표시는 **builder가 daily 시리즈에서 직접 계산**한 `manifest.metals.{metal}.current_month_avg`에서 가져옴. (PDF col[3] 정확성과 일치, 3M은 우리 계산이지만 동일 방식이라 일관성.)
+- col[6-7]은 LME 공식 (London 17:00) — 금일 Cash와는 다른 시점 (KRX 17:00 vs London 17:00 발표 시차).
+
+**과거 마이그레이션 (2026-05-11):**
+- swap 1차: col[4-5] ↔ col[6-7] (`migrate_swap_mavg.py`, 2015~ 2630 entries) — `prev_monthly_avg` 매핑은 이걸로 정확해졌음.
+- rename 2차: `settlement.monthly_avg` → `settlement.lme_settle` (`migrate_rename_lme_settle.py`) + series 컬럼 `sett_mavg_*` → `sett_lme_settle_*`. 라벨이 의미와 일치하도록 정정. 값은 그대로 보존.
+
+검증: 2026-05-08 Pb manifest `current_month_avg.cash` = 1969.20 (PDF col[3]와 정확히 일치, 5월 daily mean 1969.20 = (1945+1967+1987+1980+1967)/5 검산).
 
 ## 환율 폴백
 `builder.resolve_rate()`: BOK ECOS → PDF 내장 → None. 각 daily 엔트리 `krw.source` 추적.

@@ -21,27 +21,15 @@ DATA = ROOT / "data"
 
 # ----------------------------- settlement migration -----------------------------
 
-def test_known_post_migration_value_copper_2026_05_08():
-    """Spot check: after migration, copper 2026-05-08 has MTD-avg varying day-to-day,
-    prev-month pinned to April mean (12891.38).
+def test_lme_settle_column_for_copper_2026_05_08():
+    """PDF col[6-7] = LME 정산가 (London 17:00) — stored as sett_lme_settle_*.
+    Verify spot value preserved through rename migration.
     """
     t = pq.read_table(DATA / "series" / "copper" / "latest.parquet").to_pandas()
     row = t[t["date"] == "2026-05-08"].iloc[0]
-    assert row["sett_mavg_cash"] == pytest.approx(13515.39, abs=0.01)
+    # The exact LME settle Cash value at London 17:00 for Cu 5/8
+    assert row["sett_lme_settle_cash"] == pytest.approx(13515.39, abs=0.01)
     assert row["sett_prev_mavg_cash"] == pytest.approx(12891.38, abs=0.01)
-
-
-def test_mtd_avg_varies_through_month():
-    """Pre-fix bug: sett_mavg_cash was pinned to prev-month avg (constant within month).
-    Post-fix: should vary day to day as the month progresses.
-    """
-    t = pq.read_table(DATA / "series" / "copper" / "latest.parquet").to_pandas()
-    may = t[t["date"].str.startswith("2026-05") & t["sett_mavg_cash"].notna()]
-    assert len(may) >= 3
-    distinct = may["sett_mavg_cash"].nunique()
-    assert distinct >= 3, (
-        f"sett_mavg_cash should vary across May rows, got {distinct} distinct values"
-    )
 
 
 def test_prev_month_avg_pinned_within_month():
@@ -58,20 +46,37 @@ def test_prev_month_avg_pinned_within_month():
     )
 
 
-def test_raw_json_settlement_keys_consistent():
-    """Every entry that has monthly_avg also has prev_monthly_avg (or both None).
-    Mismatch would indicate a partial swap.
-    """
+def test_raw_json_settlement_keys_use_lme_settle():
+    """Migrated raw JSON must use lme_settle (not legacy monthly_avg) key."""
     t = pq.read_table(DATA / "raw" / "2026.parquet").to_pandas()
     for s in t["json"]:
         d = json.loads(s)
         for metal, m in d.get("metals", {}).items():
             sett = m.get("settlement") or {}
-            has_mavg = "monthly_avg" in sett
-            has_prev = "prev_monthly_avg" in sett
-            assert has_mavg == has_prev, (
-                f"settlement key mismatch metal={metal} mavg={has_mavg} prev={has_prev}"
+            assert "monthly_avg" not in sett, (
+                f"legacy 'monthly_avg' key still present for metal={metal}"
             )
+
+
+def test_current_month_avg_matches_pdf():
+    """builder.current_month_avg.cash must equal daily-mean(sett_cash) for current month.
+    This is the true MTD value displayed in FE 당월평균 row.
+    """
+    import json as _json
+    m = _json.loads((DATA / "manifest.json").read_text())
+    for metal_key, meta in m["metals"].items():
+        cma = meta.get("current_month_avg")
+        if not cma or cma.get("cash") is None:
+            continue
+        t = pq.read_table(DATA / "series" / metal_key / "latest.parquet").to_pandas()
+        cur_month = cma["month"]
+        same_month = t[t["date"].str.startswith(cur_month) & t["sett_cash"].notna()]
+        if same_month.empty:
+            continue
+        expected = round(same_month["sett_cash"].mean(), 2)
+        assert cma["cash"] == pytest.approx(expected, abs=0.01), (
+            f"{metal_key} current_month_avg.cash={cma['cash']} ≠ daily mean {expected}"
+        )
 
 
 # ----------------------------- news source pipeline -----------------------------
@@ -179,14 +184,14 @@ def test_pps_module_imports_and_class_shape():
 # ----------------------------- parquet schema invariants -----------------------
 
 def test_series_parquet_has_expected_settlement_columns():
-    """series parquet schema must keep sett_mavg_* and sett_prev_mavg_* columns
+    """series parquet schema must keep sett_lme_settle_* and sett_prev_mavg_* columns
     (don't accidentally drop on rebuild).
     """
     t = pq.read_table(DATA / "series" / "copper" / "latest.parquet")
     cols = set(t.column_names)
     required = {
         "sett_cash", "sett_3m",
-        "sett_mavg_cash", "sett_mavg_3m",
+        "sett_lme_settle_cash", "sett_lme_settle_3m",
         "sett_prev_mavg_cash", "sett_prev_mavg_3m",
     }
     missing = required - cols

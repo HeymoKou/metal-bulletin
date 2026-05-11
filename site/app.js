@@ -58,7 +58,7 @@ function unflatten(r) {
     },
     settlement: {
       cash: num(r.sett_cash), '3m': num(r.sett_3m),
-      monthly_avg: { cash: num(r.sett_mavg_cash), '3m': num(r.sett_mavg_3m) },
+      lme_settle: { cash: num(r.sett_lme_settle_cash), '3m': num(r.sett_lme_settle_3m) },
       prev_monthly_avg: { cash: num(r.sett_prev_mavg_cash), '3m': num(r.sett_prev_mavg_3m) },
       forwards: { m1: num(r.sett_fwd_m1), m2: num(r.sett_fwd_m2), m3: num(r.sett_fwd_m3) },
     },
@@ -247,8 +247,13 @@ function renderMetalSection(metal, ts) {
   const krw = latest.krw || {};
   const hasCash = cash && cash.close != null;
 
-  const monthlyDeltaCash = sett.monthly_avg && sett.prev_monthly_avg ? (sett.monthly_avg.cash - sett.prev_monthly_avg.cash) : null;
-  const monthlyDelta3m = sett.monthly_avg && sett.prev_monthly_avg ? (sett.monthly_avg['3m'] - sett.prev_monthly_avg['3m']) : null;
+  // 당월평균: builder가 daily 시리즈에서 직접 계산한 값 사용 (manifest).
+  // PDF 'monthly_avg.cash' field는 LME settle (London 17:00)과 혼동 가능 — 신뢰 안 함.
+  const cma = METALS[metal]?.current_month_avg || {};
+  const mavgCash = cma.cash ?? null;
+  const mavg3m = cma['3m'] ?? null;
+  const monthlyDeltaCash = mavgCash != null && sett.prev_monthly_avg?.cash != null ? (mavgCash - sett.prev_monthly_avg.cash) : null;
+  const monthlyDelta3m = mavg3m != null && sett.prev_monthly_avg?.['3m'] != null ? (mavg3m - sett.prev_monthly_avg['3m']) : null;
 
   const lmeBlock = `<div class="block">
     <div class="block__h">
@@ -279,8 +284,8 @@ function renderMetalSection(metal, ts) {
     <div class="kv-grid kv-grid--2">
       ${row('Cash 정산', 'cash settle', sett.cash, { prefix: '$' })}
       ${row('3M 정산', '3M settle', sett['3m'], { prefix: '$' })}
-      ${row('당월평균 Cash', 'MTD avg cash', sett.monthly_avg?.cash, { dir: dirClass(monthlyDeltaCash), prefix: '$' })}
-      ${row('당월평균 3M', 'MTD avg 3M', sett.monthly_avg?.['3m'], { dir: dirClass(monthlyDelta3m), prefix: '$' })}
+      ${row('당월평균 Cash', 'MTD avg cash', mavgCash, { dir: dirClass(monthlyDeltaCash), prefix: '$' })}
+      ${row('당월평균 3M', 'MTD avg 3M', mavg3m, { dir: dirClass(monthlyDelta3m), prefix: '$' })}
       ${row('전월평균 Cash', 'prev mo. cash', sett.prev_monthly_avg?.cash, { dim: true, prefix: '$' })}
       ${row('전월평균 3M', 'prev mo. 3M', sett.prev_monthly_avg?.['3m'], { dim: true, prefix: '$' })}
     </div>

@@ -101,8 +101,8 @@ def flatten_metal_row(daily: dict, metal: str, rate: float | None, rate_source: 
         # Settlement
         "sett_cash":              sett.get("cash"),
         "sett_3m":                sett.get("3m"),
-        "sett_mavg_cash":         _gv(sett, "monthly_avg", "cash"),
-        "sett_mavg_3m":           _gv(sett, "monthly_avg", "3m"),
+        "sett_lme_settle_cash":   _gv(sett, "lme_settle", "cash"),
+        "sett_lme_settle_3m":     _gv(sett, "lme_settle", "3m"),
         "sett_prev_mavg_cash":    _gv(sett, "prev_monthly_avg", "cash"),
         "sett_prev_mavg_3m":      _gv(sett, "prev_monthly_avg", "3m"),
         "sett_fwd_m1":            _gv(sett, "forwards", "m1"),
@@ -150,7 +150,7 @@ METAL_SCHEMA = pa.schema([
         "lme_3m_open", "lme_3m_high", "lme_3m_low", "lme_3m_close", "lme_3m_change", "lme_3m_prev",
         "lme_bid", "lme_ask",
         "sett_cash", "sett_3m",
-        "sett_mavg_cash", "sett_mavg_3m",
+        "sett_lme_settle_cash", "sett_lme_settle_3m",
         "sett_prev_mavg_cash", "sett_prev_mavg_3m",
         "sett_fwd_m1", "sett_fwd_m2", "sett_fwd_m3",
         "shfe_premium_usd",
@@ -353,9 +353,14 @@ def _augment_manifest_with_minor(manifest: dict, data_dir: Path) -> dict:
 
 
 def _augment_manifest_with_monthly_6m(manifest: dict, dailies: list[dict]) -> dict:
-    """Add metals.{metal}.monthly_6m: last 6 complete months of settlement Cash/3M average.
+    """Add per-metal monthly averages:
+      - metals.{metal}.monthly_6m: last 6 COMPLETE months, desc.
+      - metals.{metal}.current_month_avg: ongoing current-month MTD avg.
 
-    Excludes current calendar month (partial). Output sorted desc (most recent first).
+    The PDF's 당월평균 Cash column (page0 col[3]) is computed by NH from raw LME
+    data with more precision than the rounded daily settlement we store.
+    For 당월평균 3M the PDF has no field at all. We derive both directly from
+    daily series to keep FE numbers consistent and accurate.
     """
     from collections import defaultdict
 
@@ -384,6 +389,23 @@ def _augment_manifest_with_monthly_6m(manifest: dict, dailies: list[dict]) -> di
             if m3 is not None:
                 bucket["m3"].append(m3)
 
+    # Also accumulate current month for current_month_avg
+    current_by_metal: dict[str, dict[str, list[float]]] = defaultdict(
+        lambda: {"cash": [], "m3": []}
+    )
+    for d in dailies:
+        ym = d["date"][:7]
+        if ym != latest_ym:
+            continue
+        for metal, mdata in (d.get("metals") or {}).items():
+            sett = (mdata or {}).get("settlement") or {}
+            cash = sett.get("cash")
+            m3 = sett.get("3m")
+            if cash is not None:
+                current_by_metal[metal]["cash"].append(cash)
+            if m3 is not None:
+                current_by_metal[metal]["m3"].append(m3)
+
     for metal in manifest.get("metals", {}):
         per_month = by_metal.get(metal, {})
         months = sorted(per_month.keys(), reverse=True)[:6]
@@ -399,6 +421,16 @@ def _augment_manifest_with_monthly_6m(manifest: dict, dailies: list[dict]) -> di
                 "days": max(len(data["cash"]), len(data["m3"])),
             })
         manifest["metals"][metal]["monthly_6m"] = rows
+
+        cur = current_by_metal.get(metal, {"cash": [], "m3": []})
+        cash_avg = sum(cur["cash"]) / len(cur["cash"]) if cur["cash"] else None
+        m3_avg = sum(cur["m3"]) / len(cur["m3"]) if cur["m3"] else None
+        manifest["metals"][metal]["current_month_avg"] = {
+            "month": latest_ym,
+            "cash": round(cash_avg, 2) if cash_avg is not None else None,
+            "3m": round(m3_avg, 2) if m3_avg is not None else None,
+            "days": max(len(cur["cash"]), len(cur["m3"])),
+        }
     return manifest
 
 

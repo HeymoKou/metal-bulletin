@@ -70,11 +70,13 @@ def parse_settlement(table: list[list]) -> dict:
         result[metal] = {
             "cash": _num(row[1]),
             "3m": _num(row[2]),
-            "monthly_avg": {
+            # PDF col[3] = 당월평균 Cash (단일, 3M 없음) — 직접 저장 안 함.
+            # FE는 builder가 daily 시리즈에서 계산한 manifest.current_month_avg 사용.
+            "lme_settle": {  # col[6-7]: LME 정산가 (LONDON 17:00 official)
                 "cash": _num(row[6]),
                 "3m": _num(row[7]),
             },
-            "prev_monthly_avg": {
+            "prev_monthly_avg": {  # col[4-5]: 전월평균
                 "cash": _num(row[4]),
                 "3m": _num(row[5]),
             },
