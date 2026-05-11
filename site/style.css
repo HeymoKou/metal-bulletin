@@ -583,3 +583,9 @@ body {
   margin: 4px 6px;
 }
 .nav-pill--minor .nav-pill__sym { color: var(--accent); }
+
+/* ---------- News source badges ---------- */
+.news-source { padding: 1px 5px; border-radius: 3px; }
+.news-source--pps {
+  background: #0a4a8f; color: #fff; font-weight: 600;
+}

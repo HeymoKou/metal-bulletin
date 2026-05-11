@@ -238,7 +238,7 @@ function renderNewsRow(n, lastSeen) {
     <div class="news-row__title">${escAttr(n.title)}</div>
     ${n.summary ? `<div class="news-row__summary">${escAttr(n.summary)}</div>` : ''}
     <div class="news-row__meta mono">
-      <span>${escAttr(n.source)}</span>
+      <span class="news-source news-source--${escAttr(n.source)}">${escAttr(n.source)}</span>
       <span class="news-row__conf">conf ${(n.confidence * 100).toFixed(0)}%</span>
     </div>
   </a>`;
