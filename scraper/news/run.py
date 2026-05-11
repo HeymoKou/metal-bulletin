@@ -8,6 +8,7 @@ import json
 import logging
 from pathlib import Path
 
+from scraper.news.pps import PPSScraper
 from scraper.news.rss import RSSScraper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def main() -> None:
-    scrapers = [RSSScraper()]
+    scrapers = [RSSScraper(), PPSScraper()]
     per_source_counts: dict[str, int] = {}
     all_items = []
     for scraper in scrapers:
