@@ -91,4 +91,6 @@ def classify_metals(item: RawNewsItem) -> list[str]:
 
 
 def is_relevant(item: RawNewsItem) -> bool:
+    if item.source == "pps":
+        return True
     return len(classify_metals(item)) > 0

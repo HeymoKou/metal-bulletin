@@ -82,3 +82,17 @@ def test_copper_english_overrides_neg():
     """영어 'copper' 매칭이면 한국어 negative 무시 (영어가 명확한 신호)."""
     metals = classify_metals(_item("Copper market update", "구리시 행사 무관"))
     assert "copper" in metals
+
+
+def test_pps_source_bypasses_keyword_filter():
+    from datetime import datetime, timezone
+
+    item = RawNewsItem(
+        source="pps",
+        url="https://www.pps.go.kr/common/fileDown.do?key=X&sn=1",
+        title="주간 경제·비철금속 시장동향(26.5.6)",
+        snippet=None,
+        fetched_at=datetime.now(timezone.utc),
+        lang="ko",
+    )
+    assert is_relevant(item) is True
