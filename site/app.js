@@ -410,7 +410,7 @@ function renderMinorMetalSection(metal, ts, meta) {
     </div>
     <div class="hero__price-row">
       <span class="hero__price mono" data-copy="${mainPrice ?? ''}"><span class="hero__ccy">$</span>${fmt(mainPrice)}</span>
-      <span class="hero__price-tag lbl">EXW China · 기준</span>
+      <span class="hero__price-tag lbl">Rotterdam · 기준</span>
     </div>
     <div class="hero__change mono ${dir}">
       <span>${arrow(change)}</span>

@@ -158,6 +158,9 @@ def test_sb_frontend_defaults_to_rotterdam():
     ]
     for pat in forbidden_patterns:
         assert pat not in js, f"FE still uses exw_china in hero/pill: {pat!r}"
+    # Hero label string must match the actual displayed region
+    assert "EXW China · 기준" not in js, "hero label still says EXW China"
+    assert "Rotterdam · 기준" in js, "hero label must say Rotterdam"
 
 
 # ----------------------------- PPS module sanity -----------------------------
