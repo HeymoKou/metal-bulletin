@@ -15,12 +15,18 @@ PDF (NH선물) **OR** westmetall.com → daily JSON → Parquet (`data/series/{m
 - `data/raw/{year}.parquet` = daily JSON 아카이브 (재구축 입력), 2008~ 18년 시계열
 - `data/daily/` = 빌드 캐시, **gitignored**, raw에서 복원 가능 (`builder.load_dailies()`)
 
-## LME 가격 출처 이중화
-- **Primary**: NH선물 PDF — full schema (lme cash/3m OHLC, bid/ask, OI, settlement, forwards, monthly_avg, inventory breakdown, SHFE)
+## LME 가격 출처 이중화 + KOMIS cross-validation
+- **Primary**: NH선물 PDF — full schema (lme cash/3m OHLC, bid/ask, OI, settlement, forwards, lme_settle, inventory breakdown, SHFE)
 - **Fallback**: westmetall.com — minimal (settlement.cash, settlement.3m, inventory.current). KR 공휴일에 NH 미발행 시 자동 적용.
-- **Cross-validation**: westmetall과 NH PDF 90일 비교 결과 6 metals × 3 columns Δ=0.00 (완전 일치). LME 공식 동일 출처.
+- **Cross-validation 1**: westmetall과 NH PDF 90일 비교 결과 6 metals × 3 columns Δ=0.00 (완전 일치).
+- **Cross-validation 2 (실시간, 2026-05-12~)**: KOMIS BaseMetals ajax로 6 metals daily LME Cash/3M fetch → `data/komis/validation.parquet` 누적 저장. manifest.komis에 last_date/max_diff/mismatch 요약.
+  - 모듈: `scraper/komis.py` (KomisQuote + fetch), `builder/komis_validate.py` (build_records + manifest 갱신).
+  - threshold: |Δ| > 0.5 USD → mismatch (가격 quote가 2dp니 사실상 모든 의미있는 차이를 잡음).
+  - KOMIS IP 차단: AWS ASN block ✗, Azure (GH Actions) + Oracle Cloud Japan + 로컬 KR ✓ (2026-05-12 확인). GH Actions에서 정상 작동.
 - 합성 JSON은 `_source: "westmetall"` 플래그 — FE에서 일부 필드 null 처리 필요.
-- 명령어: `uv run python -m builder.lme_backfill --mode {backfill|validate|fallback}`
+- 명령어:
+  - `uv run python -m builder.lme_backfill --mode {backfill|validate|fallback}`
+  - `uv run python -m builder.komis_validate`
 
 ## 광물 메타 단일 소스
 `builder.METALS` 딕셔너리 (build.py:11) → `data/manifest.json`에 직렬화 → 프론트는 manifest만 읽음.

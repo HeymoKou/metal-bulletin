@@ -89,6 +89,11 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         run: uv run python -m builder.build --data-dir data
 
+      - name: KOMIS cross-validation
+        if: steps.gate.outputs.skip != 'true'
+        continue-on-error: true  # KOMIS outage must not block daily build
+        run: uv run python -m builder.komis_validate
+
       - name: Commit and push
         if: steps.gate.outputs.skip != 'true'
         run: |
