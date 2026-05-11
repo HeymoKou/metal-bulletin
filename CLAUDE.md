@@ -34,7 +34,8 @@ PDF (NH선물) **OR** westmetall.com → daily JSON → Parquet (`data/series/{m
 
 ## 뉴스 파이프라인
 PDF 가격과 독립. 4단계: scrape → parse (dedupe+classify) → summarize (Gemini Flash batch) → build parquet.
-- 소스 (Phase 1a+1b): mining.com, moneytoday, snmnews 철강금속신문 (RSS) + GDELT 2.0 API (글로벌 다국어) + 한국비철금속협회 nonferrous.or.kr (산업트렌드 게시판 스크랩)
+- 소스: snmnews 철강금속신문 (RSS) + 조달청 PPS 비축물자 주간리포트 (PDF→pdfplumber)
+- 폐기된 소스: mining.com/moneytoday RSS, GDELT 2.0 API, 한국비철금속협회 (헤드라인 오프토픽 다수 → snmnews+pps만)
 - KORES/KOMIS deferred — 사이트 dead/JS-rendered, Playwright 필요
 - LLM provider 인터페이스 (`SummarizerProvider` Protocol) → 추후 groq/cerebras failover 확장 가능
 - 분류 1차 필터 (`parser/news/classify.py`) → 무관 헤드라인은 LLM 안 부름 (비용 절감)
