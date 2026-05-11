@@ -211,25 +211,24 @@ function row(ko, en, value, opts = {}) {
 
 function renderMonthly6m(rows) {
   if (!Array.isArray(rows) || rows.length === 0) return '';
-  const body = rows.map(r => {
-    const ym = r.month || '';
+  // builder stores desc (most recent first); display chronological (oldest left → newest right).
+  const cells = rows.slice().reverse().map(r => {
+    const ym = (r.month || '').slice(2);  // "2026-04" → "26-04"
     const cash = r.cash != null ? '$' + fmt(r.cash) : '—';
     const m3 = r['3m'] != null ? '$' + fmt(r['3m']) : '—';
-    return `<tr>
-      <td class="m6__ym">${esc(ym)}</td>
-      <td class="m6__v mono">${cash}</td>
-      <td class="m6__v mono">${m3}</td>
-    </tr>`;
+    return `<div>
+      <div class="lbl">${esc(ym)}</div>
+      <div>${cash}</div>
+      <div class="monthly-6m__3m">${m3}</div>
+    </div>`;
   }).join('');
   return `<div class="monthly-6m">
-    <div class="monthly-6m__h">
-      <span class="block__h-ko">최근 6개월 월평균</span>
-      <span class="block__h-en">last 6 months · monthly avg</span>
+    <div class="monthly-6m__lbl">
+      <span class="block__h-ko" style="font-size:10.5px">최근 6개월</span>
+      <span class="block__h-en">last 6M avg</span>
+      <span class="monthly-6m__sub lbl">Cash / 3M</span>
     </div>
-    <table class="monthly-6m__t">
-      <thead><tr><th class="m6__ym">월</th><th class="m6__v">Cash</th><th class="m6__v">3M</th></tr></thead>
-      <tbody>${body}</tbody>
-    </table>
+    <div class="monthly-6m__row mono">${cells}</div>
   </div>`;
 }
 

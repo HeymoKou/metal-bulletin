@@ -601,24 +601,18 @@ body {
 }
 .news-drawer__ext a:hover { text-decoration: underline; }
 
-/* ---------- Monthly 6M sub-table (settlement section) ---------- */
-.monthly-6m { padding: 8px 14px 4px; border-top: 1px solid var(--border); }
-.monthly-6m__h {
-  display: flex; gap: 8px; align-items: baseline;
-  font-size: 10.5px; color: var(--text-mute);
-  margin-bottom: 4px; letter-spacing: 0.04em;
+/* ---------- Monthly 6M (mirrors .forwards layout) ---------- */
+.monthly-6m {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0 2px; border-top: 1px dashed var(--border); margin-top: 4px;
 }
-.monthly-6m__h .block__h-ko { color: var(--text); font-weight: 500; }
-.monthly-6m__t {
-  width: 100%; border-collapse: collapse; font-size: 11.5px;
+.monthly-6m__lbl {
+  display: flex; flex-direction: column; line-height: 1.05; min-width: 70px;
 }
-.monthly-6m__t th, .monthly-6m__t td {
-  padding: 2px 4px; text-align: right;
+.monthly-6m__sub { font-size: 8.5px; margin-top: 1px; }
+.monthly-6m__row {
+  flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; font-size: 12px;
 }
-.monthly-6m__t th {
-  font-weight: 500; color: var(--text-mute);
-  font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
-  border-bottom: 1px solid var(--border);
-}
-.monthly-6m__t td.m6__ym, .monthly-6m__t th.m6__ym { text-align: left; color: var(--text-mute); }
-.monthly-6m__t tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+.monthly-6m__row > div { display: flex; flex-direction: column; gap: 1px; }
+.monthly-6m__row .lbl { font-size: 9px; }
+.monthly-6m__3m { color: var(--text-mute); font-size: 11px; }
