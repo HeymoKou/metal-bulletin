@@ -7,10 +7,28 @@ Two target series:
 """
 from __future__ import annotations
 
+import io
 import logging
 import re
 
+import pdfplumber
+
 logger = logging.getLogger(__name__)
+
+# pdfplumber on Korean PDFs sometimes yields 5+ repeated chars (e.g. 주주주주주). Collapse.
+_KOR_REPEAT_RE = re.compile(r"([가-힣])\1{3,}")
+
+
+def extract_pdf_text(pdf_bytes: bytes, max_pages: int = 6) -> str:
+    """Extract text from first `max_pages` of PDF. Collapses Korean glyph runs of 4+."""
+    parts: list[str] = []
+    with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        for page in pdf.pages[:max_pages]:
+            t = page.extract_text() or ""
+            if t:
+                parts.append(t)
+    raw = "\n".join(parts)
+    return _KOR_REPEAT_RE.sub(r"\1", raw)
 
 # <a href="#none" onclick="goView('2605060014', '0001');">
 #   주간 경제&middot;비철금속 시장동향(26.5.6)

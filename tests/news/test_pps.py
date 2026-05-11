@@ -1,7 +1,7 @@
 """PPS scraper tests."""
 from pathlib import Path
 
-from scraper.news.pps import parse_attachment_url, parse_list
+from scraper.news.pps import extract_pdf_text, parse_attachment_url, parse_list
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -32,3 +32,13 @@ def test_parse_attachment_url_strips_jsessionid():
 
 def test_parse_attachment_url_returns_none_when_missing():
     assert parse_attachment_url("<html>no attachment</html>") is None
+
+
+def test_extract_pdf_text_dedupes_glyphs():
+    import re as _re
+    pdf_bytes = (FIX / "pps_sample.pdf").read_bytes()
+    text = extract_pdf_text(pdf_bytes)
+    assert len(text) > 500
+    assert "주간" in text and "비철금속" in text
+    # No 5+ Korean char repeats remain (artifact stripped)
+    assert _re.search(r"([가-힣])\1{4,}", text) is None
