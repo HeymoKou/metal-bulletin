@@ -65,6 +65,14 @@ def build_news_parquet(items: list[EnrichedNewsItem], out_dir: Path, year: int) 
 
     if out_file.exists():
         existing = pq.read_table(out_file)
+        # Normalize schema (pandas roundtrip elsewhere can upgrade string → large_string).
+        try:
+            existing = existing.cast(NEWS_SCHEMA)
+        except (pa.ArrowInvalid, pa.ArrowTypeError) as e:
+            logger.warning("existing schema cast failed err=%s; via pandas fallback", e)
+            existing = pa.Table.from_pandas(
+                existing.to_pandas(), schema=NEWS_SCHEMA, preserve_index=False
+            )
         combined = pa.concat_tables([existing, new_table], promote_options="default")
         df = combined.to_pandas()
         # Repair stale null-enriched rows: prefer rows with summary_ko over null ones.

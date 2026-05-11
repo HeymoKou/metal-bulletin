@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pyarrow as pa
 import pyarrow.parquet as pq
+
+from builder.news_build import NEWS_SCHEMA
 
 NEWS_DIR = Path("data/news")
 KEEP = {"snmnews", "pps"}
@@ -17,15 +18,15 @@ KEEP = {"snmnews", "pps"}
 def main() -> None:
     for path in sorted(NEWS_DIR.glob("*.parquet")):
         t = pq.read_table(path)
-        df = t.to_pandas()
-        before = len(df)
-        df = df[df["source"].isin(KEEP)].reset_index(drop=True)
-        after = len(df)
+        mask = [s in KEEP for s in t.column("source").to_pylist()]
+        before = t.num_rows
+        # Preserve canonical NEWS_SCHEMA on write so news_build's concat stays consistent.
+        t = t.filter(mask).cast(NEWS_SCHEMA)
+        after = t.num_rows
         if after == before:
             print(f"{path.name}: no change ({before} rows)")
             continue
-        out = pa.Table.from_pandas(df, preserve_index=False)
-        pq.write_table(out, path, compression="zstd")
+        pq.write_table(t, path, compression="zstd")
         print(f"{path.name}: {before} → {after} ({before - after} dropped)")
 
 
