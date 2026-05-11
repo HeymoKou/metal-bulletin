@@ -375,7 +375,7 @@ async function loadMinorLatest(metal) {
   })).sort((a, b) => a.date < b.date ? 1 : -1);
 }
 
-function minorPriceSeries(data, region = 'exw_china', count = 24) {
+function minorPriceSeries(data, region = 'rotterdam', count = 24) {
   return data.slice(0, count).reverse()
     .map(d => ({ date: d.date, v: d[region] != null ? d[region] : null }))
     .filter(p => p.v != null);
@@ -387,10 +387,10 @@ function renderMinorMetalSection(metal, ts, meta) {
   const ko = meta.name_ko;
   if (!latest) return `<section class="metal-section metal-section--minor" data-metal="${metal}" data-screen-label="${sym} ${ko}"></section>`;
 
-  const series = minorPriceSeries(ts.data, 'exw_china', 24);
-  // Hero: EXW China 기준 (가장 안정적 시계열)
-  const mainPrice = latest.exw_china;
-  const prev = ts.data[1]?.exw_china ?? null;
+  const series = minorPriceSeries(ts.data, 'rotterdam', 24);
+  // Hero: Rotterdam 창고 기준
+  const mainPrice = latest.rotterdam;
+  const prev = ts.data[1]?.rotterdam ?? null;
   const change = (mainPrice != null && prev != null) ? mainPrice - prev : null;
   const dir = dirClass(change);
   const pct = (change != null && prev) ? (change / prev * 100) : null;
@@ -483,8 +483,8 @@ function renderNav(metals, minors) {
     const ts = minors[m];
     const latest = ts && ts.data && ts.data[0];
     const meta = MINOR_METALS[m];
-    const close = latest?.exw_china;
-    const prev = ts?.data?.[1]?.exw_china;
+    const close = latest?.rotterdam;
+    const prev = ts?.data?.[1]?.rotterdam;
     const change = (close != null && prev != null) ? close - prev : null;
     const pct = (change != null && prev) ? (change / prev * 100) : null;
     const dir = dirClass(change);
@@ -923,9 +923,9 @@ async function init() {
       const m = el.dataset.expandMinor;
       const data = minors[m]?.data;
       if (!data?.length) return;
-      const series = minorPriceSeries(data, 'exw_china', data.length);
+      const series = minorPriceSeries(data, 'rotterdam', data.length);
       const meta = MINOR_METALS[m];
-      const title = `${meta.name_ko} · ${meta.symbol} EXW China`;
+      const title = `${meta.name_ko} · ${meta.symbol} Rotterdam`;
       openChart(title, series);
     });
   });
