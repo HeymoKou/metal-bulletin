@@ -71,12 +71,12 @@ def parse_settlement(table: list[list]) -> dict:
             "cash": _num(row[1]),
             "3m": _num(row[2]),
             "monthly_avg": {
-                "cash": _num(row[4]),
-                "3m": _num(row[5]),
-            },
-            "prev_monthly_avg": {
                 "cash": _num(row[6]),
                 "3m": _num(row[7]),
+            },
+            "prev_monthly_avg": {
+                "cash": _num(row[4]),
+                "3m": _num(row[5]),
             },
             "forwards": {
                 "m1": _num(row[8]),

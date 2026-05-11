@@ -74,10 +74,10 @@ def test_parse_settlement():
     cu = result["copper"]
     assert cu["cash"] == 12895.00
     assert cu["3m"] == 12967.00
-    assert cu["monthly_avg"]["cash"] == 12891.38
-    assert cu["monthly_avg"]["3m"] == 12969.88
-    assert cu["prev_monthly_avg"]["cash"] == 12916.40
-    assert cu["prev_monthly_avg"]["3m"] == 12996.50
+    assert cu["monthly_avg"]["cash"] == 12916.40
+    assert cu["monthly_avg"]["3m"] == 12996.50
+    assert cu["prev_monthly_avg"]["cash"] == 12891.38
+    assert cu["prev_monthly_avg"]["3m"] == 12969.88
     assert len(cu["forwards"]) == 3
 
 
