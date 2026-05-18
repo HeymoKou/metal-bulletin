@@ -103,6 +103,6 @@ jobs:
           if git diff --staged --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "data: $(TZ=Asia/Seoul date +%Y-%m-%d %H:%M) update"
+            git commit -m "data: $(TZ=Asia/Seoul date '+%Y-%m-%d %H:%M') KST"
             git push
           fi
