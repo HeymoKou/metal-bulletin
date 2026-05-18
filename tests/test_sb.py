@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pyarrow.parquet as pq
 
-from scraper.sb import REGIONS, parse, to_usd_per_mt
 from builder.sb_build import (
     REGION_KEYS,
     load_existing,
@@ -13,6 +12,7 @@ from builder.sb_build import (
     rows_from_scrape,
     write_series,
 )
+from scraper.sb import REGIONS, parse, to_usd_per_mt
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sb_scrapmonster.html"
 

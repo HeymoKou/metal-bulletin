@@ -11,10 +11,9 @@ flowchart LR
         NH[NH선물 PDF<br/>futures.co.kr]
         WM[westmetall.com<br/>fallback]
         BOK[BOK ECOS<br/>USD/EUR/CNY]
-        RSS[RSS feeds<br/>mining.com / 철강금속신문]
-        GDELT[GDELT 2.0]
-        NF[nonferrous.or.kr]
-        GEM[Gemini 2.5 Flash]
+        RSS[RSS feed<br/>철강금속신문 snmnews]
+        KMS[KOMIS BaseMetals<br/>cross-validation]
+        GEM[Gemini Flash]
     end
 
     subgraph Pipelines["GitHub Actions cron"]
@@ -30,6 +29,7 @@ flowchart LR
         EX[exchange.parquet]
         NWS[news/{year}.parquet]
         EVT[events/{year}.parquet]
+        KMV[komis/validation.parquet]
         MAN[manifest.json<br/>SoT]
     end
 
@@ -40,11 +40,10 @@ flowchart LR
     NH --> COL
     WM --> COL
     BOK --> COL
-    COL --> RAW & SER & SB & EX & MAN
+    KMS --> COL
+    COL --> RAW & SER & SB & EX & MAN & KMV
 
     RSS --> NEW
-    GDELT --> NEW
-    NF --> NEW
     GEM --> NEW
     WM --> NEW
     NEW --> NWS & EVT & MAN
@@ -99,7 +98,7 @@ sequenceDiagram
     participant EV as builder.events_build
     participant MN as builder.news_manifest
 
-    CR->>SC: fetch RSS + GDELT + nonferrous
+    CR->>SC: fetch RSS (snmnews 철강금속신문)
     SC->>PA: data/news_pending.json (raw)
     PA->>PA: dedupe (rapidfuzz) + classify_metals<br/>한국어 동음이의 차단 → 무관 drop
     PA->>SU: filtered raw
@@ -166,7 +165,9 @@ flowchart LR
 | `scraper/download.py` | NH PDF 다운로드 + dedupe | `existing_dates()`, `download_pdfs()` |
 | `scraper/lme/prices.py` | westmetall settlement HTML | `fetch_settlement()` |
 | `scraper/lme/stocks.py` | LME stocks 일일 스냅샷 | `fetch_stocks()` |
-| `scraper/news/{rss,gdelt,nonferrous}.py` | source-specific scrapers | `NewsSource.fetch()` |
+| `scraper/news/rss.py` | snmnews RSS scraper (pps.py = deferred, CI 미사용) | `NewsSource.fetch()` |
+| `scraper/komis.py` | KOMIS BaseMetals LME cross-validation fetch | `fetch()`, `KomisQuote` |
+| `builder/komis_validate.py` | KOMIS vs NH PDF 비교 → komis/validation.parquet | `build_records()`, `run()` |
 | `parser/page{1,2,3}.py` | PDF 테이블 → dict | `_safe()` wrapped |
 | `parser/news/classify.py` | 1차 metal 매칭 + 한국어 negative pattern | `classify_metals()` |
 | `parser/news/dedupe.py` | rapidfuzz title similarity | `dedupe()` |

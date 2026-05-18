@@ -1,0 +1,29 @@
+# prek (pre-commit 호환) 설정. 설치: prek install
+# 전체 실행: prek run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      # data/ = 머신 생성 산출물, fixtures = byte-exact 캡처 → 수정 금지
+      - id: trailing-whitespace
+        exclude: '^(data/|tests/.*/fixtures/|tests/fixtures/|research/|docs/)'
+      - id: end-of-file-fixer
+        exclude: '^(data/|tests/.*/fixtures/|tests/fixtures/|research/|docs/)'
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        # data/ parquet 아카이브는 의도적 커밋 — 그 외 신규 대용량만 차단
+        args: ['--maxkb=1024']
+        exclude: '^data/'
+
+  # ruff lint (unused import 등). uv dev 의존성과 버전 일치.
+  # format은 의도적 미포함 — 기존 코드 대량 재포맷 회피. 필요 시 별도 도입.
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+        require_serial: true

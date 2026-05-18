@@ -45,8 +45,8 @@ def test_extract_pdf_text_dedupes_glyphs():
 
 
 def test_scraper_returns_raw_news_items(monkeypatch):
-    from scraper.news.pps import PPSScraper
     from parser.news.models import RawNewsItem
+    from scraper.news.pps import PPSScraper
 
     list_html = (FIX / "pps_list.html").read_text(encoding="utf-8")
     view_html = (FIX / "pps_view.html").read_text(encoding="utf-8")

@@ -2,10 +2,11 @@ import argparse
 import json
 import re
 from pathlib import Path
+
 import pdfplumber
 
-from parser.page1 import parse_lme_prices, parse_settlement, parse_ev_metals
-from parser.page2 import parse_inventory, parse_shfe_spread, parse_market_factors
+from parser.page1 import parse_ev_metals, parse_lme_prices, parse_settlement
+from parser.page2 import parse_inventory, parse_market_factors, parse_shfe_spread
 from parser.page3 import parse_precious_metals
 
 METALS_ORDER = ["copper", "aluminum", "zinc", "lead", "nickel", "tin"]

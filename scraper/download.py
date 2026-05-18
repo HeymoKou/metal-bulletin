@@ -1,9 +1,10 @@
-import re
 import argparse
 import json
+import re
 from pathlib import Path
-from bs4 import BeautifulSoup
+
 import requests
+from bs4 import BeautifulSoup
 
 BASE_URL = "https://www.futures.co.kr"
 BBS_ID = "BBSMSTR_000000000251"

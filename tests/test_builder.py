@@ -1,17 +1,15 @@
-import json
 
 import pyarrow.parquet as pq
 
 from builder.build import (
+    METAL_SCHEMA,
     build_manifest,
     flatten_metal_row,
     resolve_rate,
     rows_to_table,
-    METAL_SCHEMA,
     write_exchange,
     write_metal_series,
 )
-
 
 DAILY_SAMPLE = {
     "date": "2026-05-01",

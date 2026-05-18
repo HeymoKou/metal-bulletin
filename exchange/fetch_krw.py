@@ -19,6 +19,7 @@ import json
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+
 import requests
 
 BOK_API_URL = "https://ecos.bok.or.kr/api/StatisticSearch"

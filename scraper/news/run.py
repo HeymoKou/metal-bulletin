@@ -8,7 +8,6 @@ import json
 import logging
 from pathlib import Path
 
-from scraper.news.pps import PPSScraper
 from scraper.news.rss import RSSScraper
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")

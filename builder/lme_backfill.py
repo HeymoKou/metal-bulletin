@@ -22,11 +22,10 @@ import json
 import logging
 from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Iterable
 
 from scraper.lme.prices import (
-    LMEDailyPrice,
     METAL_TO_SYMBOL,
+    LMEDailyPrice,
     fetch_metal_history,
 )
 

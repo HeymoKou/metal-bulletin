@@ -1,12 +1,10 @@
 """LME prices scraper tests."""
 from datetime import date
-from unittest.mock import MagicMock
 
 from scraper.lme.prices import (
-    LMEDailyPrice,
     SYMBOL_TO_METAL,
-    fetch_metal_history,
     _parse,
+    fetch_metal_history,
 )
 
 SAMPLE_HTML = """

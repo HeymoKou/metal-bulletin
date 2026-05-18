@@ -1,6 +1,6 @@
 """RSS scraper tests."""
 from pathlib import Path
-import pytest
+
 from scraper.news.rss import RSS_FEEDS, RSSScraper
 
 FIXTURE = Path(__file__).parent / "fixtures" / "sample_rss.xml"

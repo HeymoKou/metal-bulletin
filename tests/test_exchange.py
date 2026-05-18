@@ -1,6 +1,5 @@
 from exchange.fetch_krw import parse_bok_response
 
-
 SAMPLE_RESPONSE = {
     "StatisticSearch": {
         "row": [

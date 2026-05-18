@@ -1,6 +1,5 @@
 from scraper.download import extract_pdf_links
 
-
 SAMPLE_HTML = """
 <td class="fileDown">
     <a href="/common/BbsFileDown.do?atchFileId=FILE_000000000032340&FileNm=NHF+Daily+Metal+Bulletin+20260501.pdf"

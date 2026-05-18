@@ -1,6 +1,5 @@
-from parser.page1 import parse_lme_prices, parse_settlement, parse_ev_metals
-from parser.page2 import parse_inventory, parse_shfe_spread, parse_market_factors
-
+from parser.page1 import parse_ev_metals, parse_lme_prices, parse_settlement
+from parser.page2 import parse_inventory, parse_market_factors, parse_shfe_spread
 
 SAMPLE_TABLE1 = [
     ['전일 금 일 Cash - 3M 미결제약정(O/I)\n변동폭', None, None, None, None, None, None, None, None, None],
@@ -151,7 +150,6 @@ def test_parse_market_factors():
 
 
 from parser.page3 import parse_precious_metals
-
 
 SAMPLE_PRECIOUS = [
     ['SPOT LBMA / LPPM', None, None, None, None, None],

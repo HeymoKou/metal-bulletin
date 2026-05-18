@@ -1,5 +1,4 @@
 """Events parquet builder tests."""
-from datetime import date
 from pathlib import Path
 
 import pyarrow.parquet as pq

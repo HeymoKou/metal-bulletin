@@ -10,7 +10,6 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 

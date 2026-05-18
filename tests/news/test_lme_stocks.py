@@ -1,6 +1,5 @@
 """LME stocks scraper tests."""
 from datetime import date
-from unittest.mock import MagicMock
 
 from scraper.lme.stocks import fetch_lme_stocks, parse_stocks
 

@@ -10,12 +10,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-
-from datetime import datetime, timezone
 
 from parser.news.classify import classify_metals
 from parser.news.models import RawNewsItem

@@ -5,7 +5,6 @@ from pathlib import Path
 
 from builder.lme_backfill import (
     _build_synth_json,
-    _by_date,
     backfill,
     fallback_today,
     validate,

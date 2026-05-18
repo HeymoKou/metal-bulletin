@@ -1,7 +1,6 @@
 """Groq provider — Llama 3.3 70B via Groq Cloud (free tier: 30 req/min)."""
 from __future__ import annotations
 
-import json
 import logging
 import os
 import time

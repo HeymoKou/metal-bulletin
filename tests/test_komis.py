@@ -4,13 +4,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from builder import komis_validate
-from scraper.komis import KomisQuote, METALS
+from scraper.komis import METALS, KomisQuote
 
 
 def test_all_six_metals_mapped():
     expected = {"copper", "aluminum", "zinc", "nickel", "lead", "tin"}
     assert set(METALS.keys()) == expected
-    for key, (mcd, cash_cd, m3_cd) in METALS.items():
+    for _key, (mcd, cash_cd, m3_cd) in METALS.items():
         assert mcd.startswith("MNRL")
         assert isinstance(cash_cd, int) and 400 < cash_cd < 700
         assert isinstance(m3_cd, int) and 400 < m3_cd < 700

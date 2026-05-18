@@ -1,5 +1,6 @@
 """Dedupe tests."""
 from datetime import datetime, timezone
+
 from parser.news.dedupe import dedupe
 from parser.news.models import RawNewsItem
 

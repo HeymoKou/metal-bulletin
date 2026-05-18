@@ -1,4 +1,4 @@
-from parser.page1 import _num, _int_num, METALS_ORDER
+from parser.page1 import METALS_ORDER, _int_num, _num
 
 
 def parse_inventory(table: list[list]) -> dict:

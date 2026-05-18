@@ -19,7 +19,7 @@ DAILY_DIR = Path("data/daily")
 
 def swap_entry(d: dict) -> bool:
     changed = False
-    for metal, mdata in d.get("metals", {}).items():
+    for _metal, mdata in d.get("metals", {}).items():
         sett = mdata.get("settlement")
         if not isinstance(sett, dict):
             continue

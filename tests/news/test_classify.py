@@ -1,5 +1,6 @@
 """Keyword-based pre-filter for metal relevance."""
 from datetime import datetime, timezone
+
 from parser.news.classify import classify_metals, is_relevant
 from parser.news.models import RawNewsItem
 
