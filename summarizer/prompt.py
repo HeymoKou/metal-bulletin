@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import get_args
 
-from parser.news.models import EnrichedNewsItem, RawNewsItem
+from parser.news.models import EnrichedNewsItem, Metal, RawNewsItem
 
 logger = logging.getLogger(__name__)
+
+_VALID_METALS = frozenset(get_args(Metal))  # LLM sometimes returns minor metals (tungsten…) — drop them
 
 SYSTEM_INSTRUCTION = """\
 당신은 비철금속 시장 뉴스 분석가다. 주어진 뉴스 헤드라인 배열을 분석해
@@ -72,7 +75,7 @@ def parse_batch_response(items: list[RawNewsItem], raw_response: str) -> list[En
             out.append(EnrichedNewsItem(
                 **item.model_dump(exclude={"url_hash"}),
                 summary_ko=e.get("summary_ko"),
-                metals=e.get("metals", []),
+                metals=[m for m in e.get("metals", []) if m in _VALID_METALS],
                 sentiment=e.get("sentiment"),
                 event_type=e.get("event_type"),
                 confidence=e.get("confidence"),
