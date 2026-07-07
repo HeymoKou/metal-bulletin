@@ -28,7 +28,7 @@ jobs:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_retry.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5 (Node 24)
@@ -53,5 +53,13 @@ jobs:
         with:
           path: _site
 
+      # Pages backend occasionally returns "Deployment failed, try again later" (transient).
+      # ponytail: one in-run retry covers the single-transient case; two-in-a-row is rare enough
+      # that the next hourly collect run recovers it. Avoids a new retry-action dependency.
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - id: deployment_retry
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
