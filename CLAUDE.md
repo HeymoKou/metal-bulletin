@@ -34,6 +34,7 @@ PDF (NH선물) **OR** westmetall.com → daily JSON → Parquet (`data/series/{m
 - 프론트 하드코딩 없음 (`site/app.js:11-12`은 `let`, init 시 manifest로 채워짐)
 
 ## 워크플로우
+- **push 규칙**: CI 봇(collect/news)이 매시 data 커밋을 원격에 push하므로 로컬은 거의 항상 뒤처져 있음. push 전 항상 `git pull --rebase && git push` (merge commit 금지, rebase만).
 - `collect.yml` — KST 평일 9~19시 매시. `manifest.last_updated == 오늘(KST)`이면 모든 step 스킵 (~5초 종료).
 - `news.yml` — 일 2회 (UTC `0 0,12 * * *` = KST 9시/21시). 비철 뉴스 수집 → Gemini 요약 → `data/news/{year}.parquet`. `GEMINI_API_KEY` secret 필요.
 - `pages.yml` — site/ + data/ → Pages. push 트리거.
