@@ -2,7 +2,7 @@
   "schema": 1,
   "format": "parquet",
   "compression": "zstd",
-  "last_updated": "2026-07-08",
+  "last_updated": "2026-07-09",
   "metals": {
     "copper": {
       "symbol": "Cu",
@@ -70,9 +70,9 @@
       ],
       "current_month_avg": {
         "month": "2026-07",
-        "cash": 13229.92,
-        "3m": 13283.92,
-        "days": 6
+        "cash": 13248.0,
+        "3m": 13302.07,
+        "days": 7
       }
     },
     "aluminum": {
@@ -141,9 +141,9 @@
       ],
       "current_month_avg": {
         "month": "2026-07",
-        "cash": 3096.92,
-        "3m": 3102.08,
-        "days": 6
+        "cash": 3106.5,
+        "3m": 3111.64,
+        "days": 7
       }
     },
     "zinc": {
@@ -212,9 +212,9 @@
       ],
       "current_month_avg": {
         "month": "2026-07",
-        "cash": 3539.67,
-        "3m": 3531.67,
-        "days": 6
+        "cash": 3551.43,
+        "3m": 3543.57,
+        "days": 7
       }
     },
     "nickel": {
@@ -283,9 +283,9 @@
       ],
       "current_month_avg": {
         "month": "2026-07",
-        "cash": 16124.17,
-        "3m": 16317.5,
-        "days": 6
+        "cash": 16157.14,
+        "3m": 16348.57,
+        "days": 7
       }
     },
     "lead": {
@@ -354,9 +354,9 @@
       ],
       "current_month_avg": {
         "month": "2026-07",
-        "cash": 1845.33,
-        "3m": 1885.67,
-        "days": 6
+        "cash": 1846.0,
+        "3m": 1886.29,
+        "days": 7
       }
     },
     "tin": {
@@ -425,9 +425,9 @@
       ],
       "current_month_avg": {
         "month": "2026-07",
-        "cash": 52020.83,
-        "3m": 52314.17,
-        "days": 6
+        "cash": 52225.0,
+        "3m": 52495.0,
+        "days": 7
       }
     }
   },
@@ -452,17 +452,17 @@
     2025,
     2026
   ],
-  "total_days": 4596,
+  "total_days": 4597,
   "date_range": {
     "from": "2008-01-02",
-    "to": "2026-07-08"
+    "to": "2026-07-09"
   },
   "latest_window": 90,
   "news": {
     "available_years": [
       2026
     ],
-    "last_updated": "2026-07-09T15:14:14.462939+00:00",
+    "last_updated": "2026-05-03T18:17:55.302904+00:00",
     "total_records": 409
   },
   "events": {
@@ -496,8 +496,8 @@
     }
   },
   "komis": {
-    "last_checked": "2026-07-09T11:56:40.939022+00:00",
-    "last_date": "2026-07-08",
+    "last_checked": "2026-07-10T01:28:30.230044+00:00",
+    "last_date": "2026-07-09",
     "max_abs_diff_cash": 0.0,
     "max_abs_diff_3m": 0.0,
     "mismatches": [],
