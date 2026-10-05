@@ -2,7 +2,7 @@
   "schema": 1,
   "format": "parquet",
   "compression": "zstd",
-  "last_updated": "2026-10-02",
+  "last_updated": "2026-10-05",
   "metals": {
     "copper": {
       "symbol": "Cu",
@@ -70,9 +70,9 @@
       ],
       "current_month_avg": {
         "month": "2026-10",
-        "cash": 14345.0,
-        "3m": 14305.0,
-        "days": 2
+        "cash": 14373.33,
+        "3m": 14325.33,
+        "days": 3
       }
     },
     "aluminum": {
@@ -141,9 +141,9 @@
       ],
       "current_month_avg": {
         "month": "2026-10",
-        "cash": 3114.75,
-        "3m": 3126.5,
-        "days": 2
+        "cash": 3112.17,
+        "3m": 3123.67,
+        "days": 3
       }
     },
     "zinc": {
@@ -212,9 +212,9 @@
       ],
       "current_month_avg": {
         "month": "2026-10",
-        "cash": 3816.0,
-        "3m": 3749.5,
-        "days": 2
+        "cash": 3802.0,
+        "3m": 3737.67,
+        "days": 3
       }
     },
     "nickel": {
@@ -283,9 +283,9 @@
       ],
       "current_month_avg": {
         "month": "2026-10",
-        "cash": 15502.5,
-        "3m": 15692.5,
-        "days": 2
+        "cash": 15491.67,
+        "3m": 15691.67,
+        "days": 3
       }
     },
     "lead": {
@@ -354,9 +354,9 @@
       ],
       "current_month_avg": {
         "month": "2026-10",
-        "cash": 1832.0,
-        "3m": 1867.0,
-        "days": 2
+        "cash": 1831.17,
+        "3m": 1868.67,
+        "days": 3
       }
     },
     "tin": {
@@ -425,9 +425,9 @@
       ],
       "current_month_avg": {
         "month": "2026-10",
-        "cash": 54377.5,
-        "3m": 54450.0,
-        "days": 2
+        "cash": 54335.0,
+        "3m": 54408.33,
+        "days": 3
       }
     }
   },
@@ -452,10 +452,10 @@
     2025,
     2026
   ],
-  "total_days": 4655,
+  "total_days": 4656,
   "date_range": {
     "from": "2008-01-02",
-    "to": "2026-10-02"
+    "to": "2026-10-05"
   },
   "latest_window": 90,
   "news": {
@@ -496,7 +496,7 @@
     }
   },
   "komis": {
-    "last_checked": "2026-10-05T09:41:35.649745+00:00",
+    "last_checked": "2026-10-05T18:58:16.915932+00:00",
     "last_date": "2026-10-01",
     "max_abs_diff_cash": 0.0,
     "max_abs_diff_3m": 0.0,
